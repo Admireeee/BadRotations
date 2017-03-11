@@ -62,6 +62,16 @@ if not metaTable1 then
 		end
 		return true
 	end
+	-- This is for NPC units we do not want to heal. Compare to list in collections.
+	local function CheckSkipNPC(tar)
+		local npcId = (getGUID(tar))
+		for i=1, #novaEngineTables.skipNPC do
+			if npcId == novaEngineTables.skipNPC[i] then
+				return true
+			end
+		end
+	return false
+	end
 	local function CheckCreatureType(tar)
 		local CreatureTypeList = {"Critter", "Totem", "Non-combat Pet", "Wild Pet"}
 		for i=1, #CreatureTypeList do
@@ -84,6 +94,7 @@ if not metaTable1 then
 			and UnitInPhase(tar)
 		then return true
 		else return false end
+
 	end
 	function memberSetup:new(unit)
 		-- Seeing if we have already cached this unit before
@@ -123,7 +134,7 @@ if not metaTable1 then
 			end
 			-- incoming heals
 			local incomingheals
-			if getOptionCheck("No Incoming Heals") ~= true and UnitGetIncomingHeals(o.unit,"player") ~= nil then
+			if getOptionCheck("Incoming Heals") == true and UnitGetIncomingHeals(o.unit,"player") ~= nil then
 				incomingheals = UnitGetIncomingHeals(o.unit,"player")
 			else
 				incomingheals = 0
@@ -405,7 +416,7 @@ if not metaTable1 then
 				end
 				for p=1, #SpecialTargets do
 					-- Checking if Unit Exists and it's possible to heal them
-					if UnitExists(SpecialTargets[p]) and HealCheck(SpecialTargets[p]) then
+					if UnitExists(SpecialTargets[p]) and HealCheck(SpecialTargets[p]) and not CheckSkipNPC(SpecialTargets[p]) then
 						if not memberSetup.cache[select(2, getGUID(SpecialTargets[p]))] then
 							local SpecialCase = memberSetup:new(SpecialTargets[p])
 							if SpecialCase then

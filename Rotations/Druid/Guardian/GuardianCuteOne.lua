@@ -95,6 +95,8 @@ local function createOptions()
             br.ui:createSpinner(section, "Barkskin", 50, 0, 100, 5, "|cffFFBB00Health Percentage to use at.")
         -- Frenzied Regeneration
             br.ui:createSpinner(section, "Frenzied Regeneration", 50, 0, 100, 5, "|cffFFBB00Health Loss Percentage to use at.")
+        -- Ironfur
+            br.ui:createSpinner(section, "Ironfur", 50, 0, 100, 5, "|cffFFBB00Health Percentage to use at.")
         -- Mark of Ursol
             br.ui:createSpinner(section, "Mark of Ursol", 50, 0, 100, 5, "|cffFFBB00Health Percentage to use at.")
         -- Rage of the Sleeper
@@ -561,7 +563,7 @@ local function runRotation()
                         if cast.bristlingFur() then return end
                     end
         -- Ironfur
-                    if not buff.ironfur.exists() or powerDeficit < 25 or buff.ironfur.remain() < 2 then
+                    if isChecked("Ironfur") and php >= getOptionValue("Ironfur") and not buff.ironfur.exists() or powerDeficit < 25 or buff.ironfur.remain() < 2 then
                         if cast.ironfur() then return end
                     end
         -- Moonfire
@@ -581,7 +583,9 @@ local function runRotation()
                         if cast.mangle() then return end
                     end
         -- Thrash
-                    if cast.thrash() then return end
+                    if getDistance("target") < 8 then
+                        if cast.thrash() then return end
+                    end
         -- Mangle
                     if ((mode.rotation == 1 and #enemies.yards8 > 1) or mode.rotation == 2) then
                         if cast.mangle() then return end
@@ -597,23 +601,6 @@ local function runRotation()
                     end
         -- Lunar Beam
                     if cast.lunarBeam() then return end
-        -- -- Pulverize
-        --             if talent.pulverize then
-        --                 for i = 1, #enemies.yards5 do
-        --                     local thisUnit = enemies.yards5[i]
-        --                     if buff.pulverize.remain() < 3.6 and debuff.thrash.stack(thisUnit) >= 2 then
-        --                         if cast.pulverize(thisUnit) then return end
-        --                     end
-        --                 end
-        --             end
-        -- -- Thrash
-        --             if talent.pulverize and buff.pulverize.remain() < 3.6 then
-        --                 if cast.thrash() then return end
-        --             end
-        -- -- Thrash
-        --             if #enemies.yards8 > 0 then
-        --                 if cast.thrash() then return end
-        --             end
         -- Moonfire
                     if ((mode.rotation == 1 and #enemies.yards8 > 1) or mode.rotation == 2) then
                         if #enemies.yards40 < 4 then

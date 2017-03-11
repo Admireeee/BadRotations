@@ -87,7 +87,9 @@ function br.read.combatLog()
                     if isInCombat("player") and UnitIsUnit(sourceName,"player") then
                         if br.player ~= nil then
                             for k, v in pairs(br.player.spell.abilities) do
-                                if v == spell then lastCast = spell end
+                                if v == spell then 
+                                    lastCast = spell 
+                                end                                     
                             end
                         end
                     end
@@ -154,7 +156,9 @@ function br.read.combatLog()
             --[[ Cast Failed --> Queue]]
             if param == "SPELL_CAST_FAILED" then
                 if sourceName ~= nil then
-                    if isInCombat("player") and UnitIsUnit(sourceName,"player") and spell ~= botSpell and not botCast then
+                    if isInCombat("player") and UnitIsUnit(sourceName,"player") and spell ~= botSpell and not botCast 
+                        and spell ~= 48018 and spell ~= 48020 -- Warlock: Demonic Circle
+                    then
                         -- set destination
                         if destination == "" then
                           queueDest = nil
@@ -217,6 +221,7 @@ function br.read.combatLog()
                 and SpellID ~= 88263      -- 88263
                 -- and SpellID ~= 172        -- Corruption
                 and SpellID ~= 8690         -- Hearthstone
+                and SpellID ~= 194279     -- Caltrop DoT
             then
                 local color = "|cff12C8FF"
                 local white = "|cffFFFFFF"

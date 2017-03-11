@@ -1,8 +1,8 @@
 function GetObjectExists(Unit)
-    if FireHack and ObjectExists(Unit) == true then
-        return true
+    if FireHack then
+        return ObjectExists(Unit)
     else
-        return false
+        return UnitExists(Unit)
     end
 end
 function GetObjectFacing(Unit)
@@ -33,13 +33,13 @@ function GetObjectIndex(Index)
         return 0
     end
 end
-function GetObjectCountBR()
-	if FireHack then
-    	return GetObjectCount()
-    else
-    	return 0
-    end
-end
+-- function GetObjectCountBR()
+-- 	if FireHack then
+--     	return GetObjectCount()
+--     else
+--     	return 0
+--     end
+-- end
 function GetObjectID(Unit)
 	if FireHack and GetObjectExists(Unit) then
 		return ObjectID(Unit)
@@ -741,9 +741,10 @@ function castSpell(Unit,SpellID,FacingCheck,MovementCheck,SpamAllowed,KnownSkip,
 		if spellRange == nil or (spellRange < 4 and DistanceSkip==false) then spellRange = 4 end
 		if DistanceSkip == true then spellRange = 40 end
 		-- Check unit,if it's player then we can skip facing
-		if (Unit == nil or UnitIsUnit("player",Unit)) or -- Player
-			(Unit ~= nil and UnitIsFriend("player",Unit)) or
-			IsHackEnabled("AlwaysFacing") then  -- Ally
+		if (Unit == nil or UnitIsUnit("player",Unit)) -- Player
+			or (Unit ~= nil and UnitIsFriend("player",Unit))  -- Ally
+			or IsHackEnabled("AlwaysFacing") 
+		then 
 			FacingCheck = true
 		elseif isSafeToAttack(Unit) ~= true then -- enemy
 			return false
@@ -810,38 +811,57 @@ function castSpell(Unit,SpellID,FacingCheck,MovementCheck,SpamAllowed,KnownSkip,
 end
 -- Cast Spell Queue
 function castQueue()
-	local spellCast = br.player.queue[1].id
-    local spellName = GetSpellInfo(br.player.queue[1].id)
-    local minRange 	= select(5,GetSpellInfo(spellName))
-    local maxRange 	= select(6,GetSpellInfo(spellName))
-    if IsHelpfulSpell(spellName) then
-        thisUnit = "player"
-        amIinRange = true
-    elseif br.player.queue[1].target == nil then
-        if IsUsableSpell(spellCast) and isKnown(spellCast) then
-            if maxRange ~= nil and maxRange > 0 then
-                thisUnit = dynamicTarget(maxRange,  true)
-                amIinRange = getDistance(thisUnit) < maxRange
-            else
-                thisUnit = dynamicTarget(5,  true)
-                amIinRange = getDistance(thisUnit) < 5
-            end
-        end
-    elseif IsSpellInRange(spellName,thisUnit) == nil then
-        amIinRange = true
-    else
-        amIinRange = IsSpellInRange(spellName,thisUnit) == 1
-    end
-    if IsUsableSpell(spellCast) and getSpellCD(spellCast) == 0 and isKnown(spellCast) and amIinRange then
-        if UnitIsDeadOrGhost(thisUnit) then
-            if thisUnit == nil then thisUnit = "player" end
-            castSpell(thisUnit,spellCast,false,false,false,false,true)
-        else
-            if thisUnit == nil then thisUnit = "player" end
-            castSpell(thisUnit,spellCast,false,false,false)
-        end
-    end
-    return
+	-- Catch for spells not registering on Combat log
+	if br.player ~= nil then
+		if br.player.queue ~= nil and #br.player.queue > 0 then
+			for i = 1, #br.player.queue do
+				local queueIndex = br.player.queue[i]
+				local spellCast = queueIndex.id
+			    local spellName = GetSpellInfo(queueIndex.id)
+			    local minRange 	= select(5,GetSpellInfo(spellName))
+			    local maxRange 	= select(6,GetSpellInfo(spellName))
+			    local thisUnit 	= queueIndex.target
+				if spellCast ~= lastSpellCast then
+				    -- Can the spell be cast
+				    if not select(2,IsUsableSpell(spellCast)) and getSpellCD(spellCast) == 0 and isKnown(spellCast) then
+					    -- Find Best Target for Range 
+					    if IsHelpfulSpell(spellName) then
+					    	if thisUnit == nil or not UnitIsFriend(thisUnit,"player") then
+					        	thisUnit = "player"
+					        end
+					        amIinRange = true
+					    elseif thisUnit == nil then
+					        if IsUsableSpell(spellCast) and isKnown(spellCast) then
+					            if maxRange ~= nil and maxRange > 0 then
+					                thisUnit = "target" --dynamicTarget(maxRange, true)
+					                amIinRange = getDistance(thisUnit) < maxRange
+					            else
+					                thisUnit = "target" --dynamicTarget(5, true)
+					                amIinRange = getDistance(thisUnit) < 5
+					            end
+					        end
+					    elseif IsSpellInRange(spellName,thisUnit) == nil then
+					        amIinRange = true
+					    else
+					        amIinRange = IsSpellInRange(spellName,thisUnit) == 1
+					    end
+					    -- Cast if able
+					    if amIinRange then
+				            if thisUnit == nil then thisUnit = "player" end
+					        if UnitIsDeadOrGhost(thisUnit) then
+					            castSpell(thisUnit,spellCast,false,false,false,false,true)
+					            return true
+					        else
+					            Print("Casting Spell: "..spellName)
+					            castSpell(thisUnit,spellCast,false,false,false)
+					            return true
+					        end
+					    end
+					end
+				end
+			end
+		end
+	end
 end
 --[[castSpellMacro(Unit,SpellID,FacingCheck,MovementCheck,SpamAllowed,KnownSkip)
 Parameter 	Value
@@ -1400,6 +1420,31 @@ function getFacing(Unit1,Unit2,Degrees)
 		end
 	end
 end
+function getFacingDistance()
+    if UnitIsVisible("player") and UnitIsVisible("target") then
+        --local targetDistance = getRealDistance("target")
+        local targetDistance = getDistance("target")
+        local Y1,X1,Z1 = GetObjectPosition("player");
+        local Y2,X2,Z2 = GetObjectPosition("target");
+        local Angle1 = GetObjectFacing("player")
+        local deltaY = Y2 - Y1
+        local deltaX = X2 - X1
+        Angle1 = math.deg(math.abs(Angle1-math.pi*2))
+        if deltaX > 0 then
+            Angle2 = math.deg(math.atan(deltaY/deltaX)+(math.pi/2)+math.pi)
+        elseif deltaX <0 then
+            Angle2 = math.deg(math.atan(deltaY/deltaX)+(math.pi/2))
+        end
+        local Dist = round2(math.tan(math.abs(Angle2 - Angle1)*math.pi/180)*targetDistance*10000)/10000
+        if ObjectIsFacing("player","target") then
+            return Dist
+        else
+            return -(math.abs(Dist))
+        end
+    else
+        return 1000
+    end
+end
 function getGUID(unit)
 	local nShortHand = ""
 	if GetObjectExists(unit) then
@@ -1425,7 +1470,7 @@ function getHP(Unit)
 						return br.friend[i].hp
 					end
 				end
-				if getOptionCheck("No Incoming Heals") ~= true and UnitGetIncomingHeals(Unit,"player") ~= nil then
+				if getOptionCheck("Incoming Heals") == true and UnitGetIncomingHeals(Unit,"player") ~= nil then
 					return 100*(UnitHealth(Unit)+UnitGetIncomingHeals(Unit,"player"))/UnitHealthMax(Unit)
 				else
 					return 100*UnitHealth(Unit)/UnitHealthMax(Unit)
@@ -1628,8 +1673,9 @@ function getTotemDistance(Unit1)
 	end
 
 	if UnitIsVisible(Unit1) then
-		for i = 1,GetObjectCountBR() do
-			if UnitCreator(ObjectWithIndex(i)) == ObjectPointer("player") and (UnitName(ObjectWithIndex(i)) == "Searing Totem" or UnitName(ObjectWithIndex(i)) == "Magma Totem") then
+		-- local objectCount = GetObjectCount() or 0
+		for i = 1, ObjectCount() do
+			if UnitIsUnit(UnitCreator(ObjectWithIndex(i)), "Player") and (UnitName(ObjectWithIndex(i)) == "Searing Totem" or UnitName(ObjectWithIndex(i)) == "Magma Totem") then
 				X2,Y2,Z2 = GetObjectPosition(GetObjectIndex(i))
 			end
 		end
@@ -2005,7 +2051,7 @@ function hasNoControl(spellID,unit)
 		end
 		-- Monk
 		if class == 10 then
-			if text == LOSS_OF_CONTROL_DISPLAY_STUN or text == LOSS_OF_CONTROL_DISPLAY_FEAR or text == LOSS_OF_CONTROL_DISPLAY_ROOT or text == LOSS_OF_CONTROL_DISPLAY_HORROR then
+			if text == LOSS_OF_CONTROL_DISPLAY_ROOT or text == LOSS_OF_CONTROL_DISPLAY_SNARE then
 				return true
 			end
 		end
@@ -2052,8 +2098,8 @@ function hasThreat(unit,playerUnit)
 	local unitThreat
 	local targetOfTarget
 	local targetFriend
-	if UnitExists("targettarget") then targetOfTarget = UnitTarget(unit) else targetOfTarget = "player" end
-	if UnitExists("targettarget") then targetFriend = (UnitInParty(targetOfTarget) or UnitInRaid(targetOfTarget)) else targetFriend = false end
+	if ObjectExists("targettarget") and ObjectExists(unit) then targetOfTarget = UnitTarget(unit) else targetOfTarget = "player" end
+	if ObjectExists("targettarget") then targetFriend = (UnitInParty(targetOfTarget) or UnitInRaid(targetOfTarget)) else targetFriend = false end
 	for i = 1, #br.friend do
 		local thisUnit = br.friend[i].unit
 		if UnitThreatSituation(unit, thisUnit)~=nil then
@@ -2426,7 +2472,7 @@ end
 -- if IsInPvP() then
 function isInPvP()
 	local inpvp = GetPVPTimer()
-	if inpvp ~= 301000 and inpvp ~= -1 then
+	if (inpvp ~= 301000 and inpvp ~= -1) or (UnitIsPVP("player") and UnitIsPVP("target")) then
 		return true
 	else
 		return false
@@ -2612,7 +2658,7 @@ function isValidUnit(Unit)
 	local myTarget = UnitIsUnit(Unit,"target")
     local inCombat = UnitAffectingCombat("player")
     local inInstance =  IsInInstance()
-	if ObjectExists(Unit) and not UnitIsDeadOrGhost(Unit) and (not UnitIsFriend(Unit, "player") or isInPvP()) and UnitCanAttack("player",Unit) then
+	if ObjectExists(Unit) and not UnitIsDeadOrGhost(Unit) and (not UnitIsFriend(Unit, "player") or UnitIsEnemy(Unit, "player")) and UnitCanAttack("player",Unit) and isSafeToAttack(Unit) then
 		-- Only consider Units that are in 20yrs or I have targeted when not in Combat and not in an Instance.
 		if not inCombat and not inInstance and (inAggroRange or myTarget) then return true end
 		-- Only consider Units that I have threat with or I am alone and have targeted when not in Combat and in an Instance.
@@ -2804,20 +2850,36 @@ function isSelected(Value)
 	end
 end
 -- if getValue("player") <= getValue("Eternal Flame") then
+-- function getValue(Value)
+-- 	if br.data~=nil then
+-- 		if br.data.settings[br.selectedSpec][br.selectedProfile]~=nil then
+-- 	        if br.data.settings[br.selectedSpec][br.selectedProfile][Value.."Status"] ~= nil then
+-- 	            return br.data.settings[br.selectedSpec][br.selectedProfile][Value.."Status"]
+-- 	        elseif br.data.settings[br.selectedSpec][br.selectedProfile][Value.."Drop"] ~= nil then
+-- 	            return br.data.settings[br.selectedSpec][br.selectedProfile][Value.."Drop"]
+-- 	        else
+-- 	            return 0
+-- 	        end
+-- 		end
+-- 	else
+-- 		return 0
+-- 	end
+-- end
 function getValue(Value)
-	if br.data~=nil then
-		if br.data.settings[br.selectedSpec][br.selectedProfile]~=nil then
-	        if br.data.settings[br.selectedSpec][br.selectedProfile][Value.."Status"] ~= nil then
-	            return br.data.settings[br.selectedSpec][br.selectedProfile][Value.."Status"]
-	        elseif br.data.settings[br.selectedSpec][br.selectedProfile][Value.."Drop"] ~= nil then
-	            return br.data.settings[br.selectedSpec][br.selectedProfile][Value.."Drop"]
-	        else
-	            return 0
-	        end
-		end
-	else
-		return 0
-	end
+    if br.data ~=nil then
+    local selectedProfile = br.data.settings[br.selectedSpec][br.selectedProfile]
+        if selectedProfile ~=nil then
+            if selectedProfile[Value.."Status"] ~= nil then
+                return selectedProfile[Value.."Status"]
+            elseif selectedProfile[Value.."Drop"] ~= nil then
+                return selectedProfile[Value.."Drop"]
+            else
+                return 0
+            end
+        end
+    else
+        return 0
+    end
 end
 -- used to gather informations from the bot options frame
 function getOptionCheck(Value)
@@ -3127,7 +3189,7 @@ function TierScan(thisTier)
 		-- if there is an item in that slot
 		if GetInventoryItemID("player", i) ~= nil then
 			-- compare to items in our items list
-			for j = 1, 5 do
+			for j = 1, #sets[thisTier][myClass] do
 				if sets[thisTier][myClass][j] ~= nil then
 					--Print(sets[thisTier][myClass][j])
 					if GetItemInfo(GetInventoryItemID("player", i)) == GetItemInfo(sets[thisTier][myClass][j]) then
@@ -3169,4 +3231,20 @@ function convertName(name)
 	    return name
 	end
 	return "None"
+end
+
+function bossHPLimit(unit,hp)
+    -- Boss Active/Health Max
+    local bossHPMax = bossHPMax or 0
+    local inBossFight = inBossFight or false
+    local enemyList = br.player.enemies(40)
+    for i = 1, #enemyList do
+        local thisUnit = enemyList[i]
+        if isBoss(thisUnit) then
+            bossHPMax = UnitHealthMax(thisUnit)
+            inBossFight = true
+            break
+        end
+    end
+    return (not inBossFight or (inBossFight and UnitHealthMax(unit) > bossHPMax * (hp / 100)))
 end

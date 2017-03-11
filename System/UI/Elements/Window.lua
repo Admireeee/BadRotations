@@ -206,10 +206,12 @@ function br.ui:closeWindow(windowName)
                                         if br.data.settings[l][m].active == nil or br.data.settings[l][m].active then 
                                             br.ui.window[k].parent.closeButton:Click() 
                                             br.data.settings[l][m].active = false
+                                            if not FireHack then Print("|cffFFFFFFCannot Start... |cffFF1100Firehack |cffFFFFFFis not loaded. Please attach Firehack.") end
                                         end
                                     elseif br.data.settings[l][m].active == nil or br.data.settings[l][m].active then
                                         br.ui.window[k].parent.closeButton:Click() 
                                         br.data.settings[l][m].active = false
+                                        if not FireHack then Print("|cffFFFFFFCannot Start... |cffFF1100Firehack |cffFFFFFFis not loaded. Please attach Firehack.") end
                                     end
                                 end
                             end
@@ -227,6 +229,7 @@ function br.ui:toggleWindow(windowName)
             if br.ui.window[k].parent ~= nil then 
                 if br.data.settings[br.selectedSpec][k].active then
                     br.ui.window[k].parent.closeButton:Click()
+                    br.data.settings[br.selectedSpec][k].active = false
                 else
                     br.ui.window[k].parent:Show()
                     br.data.settings[br.selectedSpec][k].active = true

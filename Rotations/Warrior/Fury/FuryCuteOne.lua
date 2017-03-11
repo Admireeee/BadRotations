@@ -52,8 +52,12 @@ local function createOptions()
         section = br.ui:createSection(br.ui.window.profile,  "General")
             -- Dummy DPS Test
             br.ui:createSpinner(section, "DPS Testing",  5,  5,  60,  5,  "|cffFFFFFFSet to desired time for test in minuts. Min: 5 / Max: 60 / Interval: 5")
+            -- Pre-Pull Timer
+            br.ui:createSpinner(section, "Pre-Pull Timer",  5,  1,  10,  1,  "|cffFFFFFFSet to desired time to start Pre-Pull (DBM Required). Min: 1 / Max: 10 / Interval: 1")
+            -- Artifact
+            br.ui:createDropdownWithout(section,"Artifact", {"|cff00FF00Everything","|cffFFFF00Cooldowns","|cffFF0000Never"}, 1, "|cffFFFFFFWhen to use Artifact Ability.")
             -- Bladestorm Units
-            br.ui:createSpinner(section, "Bladestorm Units", 3, 1, 10, 1, "|cffFFFFFFSet to desired minimal number of units required to use Bladestorm.")
+            br.ui:createSpinnerWithout(section, "Bladestorm Units", 3, 1, 10, 1, "|cffFFFFFFSet to desired minimal number of units required to use Bladestorm.")
             -- Berserker Rage
             br.ui:createCheckbox(section,"Berserker Rage", "Check to use Berserker Rage")
             -- Heroic Leap
@@ -61,10 +65,10 @@ local function createOptions()
             br.ui:createDropdownWithout(section,"Heroic Leap - Target",{"Best","Target"},1,"Desired Target of Heroic Leap")
             -- Piercing Howl
             br.ui:createCheckbox(section,"Piercing Howl", "Check to use Piercing Howl")
-            -- Pre-Pull Timer
-            br.ui:createSpinner(section, "Pre-Pull Timer",  5,  1,  10,  1,  "|cffFFFFFFSet to desired time to start Pre-Pull (DBM Required). Min: 1 / Max: 10 / Interval: 1")
-            -- Artifact
-            br.ui:createDropdownWithout(section,"Artifact", {"|cff00FF00Everything","|cffFFFF00Cooldowns","|cffFF0000Never"}, 1, "|cffFFFFFFWhen to use Artifact Ability.")
+            -- Whirlwind Units
+            br.ui:createSpinnerWithout(section, "Whirlwind Units", 3, 1, 10, 1, "|cffFFFFFFSet to desired minimal number of units required to use Whirlwind.")
+            -- Execute Phase
+            br.ui:createCheckbox(section, "Use Execute Phase")
         br.ui:checkSectionState(section)
         ------------------------
         --- COOLDOWN OPTIONS ---
@@ -375,10 +379,10 @@ local function runRotation()
         -- Trinkets
                 -- use_item,slot=trinket1,if=buff.battle_cry.up&buff.enrage.up
                 if isChecked("Trinkets") and buff.battleCry.exists() and buff.enrage.exists() then
-                    if canUse(13) then
+                    if canUse(13) and not hasEquiped(140808) then
                         useItem(13)
                     end
-                    if canUse(14) then
+                    if canUse(14) and not hasEquiped(140808) then
                         useItem(14)
                     end
                 end
@@ -480,19 +484,19 @@ local function runRotation()
             -- use_item,name=draught_of_souls,if=equipped.draught_of_souls&buff.battle_cry.remains>2&buff.enrage.remains>2&((talent.dragon_roar.enabled&buff.dragon_roar.remains>=3)|!talent.dragon_roar.enabled)
             if hasEquiped(140808) and buff.battleCry.remain() > 2 and buff.enrage.remain() > 2 and ((talent.dragonRoar and buff.dragonRoar.remain() >= 3) or not talent.dragonRoar) then
                 if canUse(140808) then
-                    useItem(14080)
+                    useItem(140808)
                 end
             end
         -- Odyn's Fury
             -- odyns_fury,if=spell_targets.odyns_fury>1
             if getOptionValue("Artifact") == 1 or (getOptionValue("Artifact") == 2 and useCDs()) and getDistance(units.dyn5) < 5 then
                 if ((mode.rotation == 1 and #enemies.yards8 > 1) or mode.rotation == 2) then
-                    if cast.odynsFury() then return end
+                    if cast.odynsFury("player") then return end
                 end
             end
         -- Whirlwind
             -- whirlwind,if=spell_targets.whirlwind>1&buff.meat_cleaver.down
-            if ((mode.rotation == 1 and #enemies.yards8 > 1) or mode.rotation == 2) and not buff.meatCleaver.exists() then
+            if ((mode.rotation == 1 and #enemies.yards8 > getOptionValue("Whirlwind Units")) or mode.rotation == 2) and not buff.meatCleaver.exists() then
                 if cast.whirlwind() then return end
             end
         -- Execute
@@ -523,7 +527,7 @@ local function runRotation()
         -- Odyn's Fury
             -- odyns_fury
             if getOptionValue("Artifact") == 1 or (getOptionValue("Artifact") == 2 and useCDs()) and getDistance(units.dyn5) < 5 then
-                if cast.odynsFury() then return end
+                if cast.odynsFury("player") then return end
             end 
         -- Raging Blow
             -- raging_blow
@@ -535,7 +539,7 @@ local function runRotation()
             if cast.bloodthirst() then return end
         -- Whirlwind
             -- whirlwind,if=buff.wrecking_ball.react&buff.enrage.up
-            if buff.wreckingBall.exists() and buff.enrage.exists() then
+            if ((mode.rotation == 1 and #enemies.yards8 > getOptionValue("Whirlwind Units")) or mode.rotation == 2) and buff.wreckingBall.exists() and buff.enrage.exists() then
                 if cast.whirlwind() then return end
             end
         -- Furious Slash
@@ -554,6 +558,11 @@ local function runRotation()
             if talent.frenzy and (not buff.frenzy.exists() or buff.frenzy.remain() <= 2) then
                 if cast.furiousSlash() then return end
             end
+        -- Whirlwind
+            -- whirlwind,if=spell_targets.whirlwind=3&buff.wrecking_ball.react
+            if ((mode.rotation == 1 and #enemies.yards8 > getOptionValue("Whirlwind Units")) or mode.rotation == 2) and buff.wreckingBall.exists() then
+                if cast.whirlwind() then return end
+            end
         -- Raging Blow
             -- raging_blow,if=talent.inner_rage.enabled&buff.enrage.up
             if talent.innerRage and buff.enrage.exists() then
@@ -569,6 +578,11 @@ local function runRotation()
             if buff.stoneHeart.exists() and ((talent.innerRage and cd.ragingBlow > 1) or buff.enrage.exists()) then
                 if cast.execute() then return end
             end
+        -- Whirlwind
+            -- whirlwind,if=buff.wrecking_ball.react&buff.enrage.up
+            if ((mode.rotation == 1 and #enemies.yards8 > getOptionValue("Whirlwind Units")) or mode.rotation == 2) and buff.wreckingBall.exists() and buff.enrage.exists() then
+                if cast.whirlwind() then return end
+            end
         -- Bloodthirst
             -- bloodthirst
             if cast.bloodthirst() then return end
@@ -576,11 +590,6 @@ local function runRotation()
             -- raging_blow
             if talent.innerRage or buff.enrage.exists() then
                 if cast.ragingBlow() then return end
-            end
-        -- Whirlwind
-            -- whirlwind,if=buff.wrecking_ball.react&buff.enrage.up
-            if buff.wreckingBall.exists() and buff.enrage.exists() then
-                if cast.whirlwind() then return end
             end
         -- Furious Slash
             -- furious_slash
@@ -652,7 +661,7 @@ local function runRotation()
             if cast.bloodthirst() then return end
         -- Whirlwind
             -- whirlwind
-            if getDistance(units.dyn8) < 8 then
+            if ((mode.rotation == 1 and #enemies.yards8 > getOptionValue("Whirlwind Units")) or mode.rotation == 2) and getDistance(units.dyn8) < 8 then
                 if cast.whirlwind() then return end
             end
         end -- End Action List - Three Targets
@@ -678,7 +687,7 @@ local function runRotation()
             end
         -- Whirlwind
             -- whirlwind,if=buff.meat_cleaver.down
-            if not buff.meatCleaver.exists() and getDistance(units.dyn8) < 8 then
+            if ((mode.rotation == 1 and #enemies.yards8 > getOptionValue("Whirlwind Units")) or mode.rotation == 2) and not buff.meatCleaver.exists() and getDistance(units.dyn8) < 8 then
                 if cast.whirlwind() then return end
             end
         -- Rampage
@@ -691,7 +700,7 @@ local function runRotation()
             if cast.bloodthirst() then return end
         -- Whirlwind
             -- whirlwind
-            if getDistance(units.dyn8) < 8 then
+            if ((mode.rotation == 1 and #enemies.yards8 > getOptionValue("Whirlwind Units")) or mode.rotation == 2) and getDistance(units.dyn8) < 8 then
                 if cast.whirlwind() then return end
             end
         end -- End Action List - MultiTarget
@@ -707,7 +716,7 @@ local function runRotation()
 ---------------------------------
 --- Out Of Combat - Rotations ---
 ---------------------------------
-            if not inCombat and isValidUnit("target") then
+            if not inCombat and isValidUnit("target") and not IsMounted() then
                 if actionList_PreCombat() then return end
                 if getDistance(units.dyn5)<5 then
                     StartAttack()
@@ -722,7 +731,7 @@ local function runRotation()
 -----------------------------
 --- In Combat - Rotations ---
 -----------------------------
-            if inCombat and isValidUnit(units.dyn5) then
+            if inCombat and isValidUnit(units.dyn5) and not IsMounted() then
             -- Auto Attack
                 --auto_attack
                 if getDistance(units.dyn5) < 5 then
@@ -756,12 +765,12 @@ local function runRotation()
                 end
             -- Action List - Execute
                 -- call_action_list,name=execute,if=target.health.pct<20
-                if thp < 20 and level >= 8 then
+                if thp < 20 and level >= 8 and isChecked("Use Execute Phase") then
                     if actionList_Execute() then return end
                 end
             -- Action List - Single Target
                 -- call_action_list,name=single_target,if=target.health.pct>20
-                if thp >= 20 or (thp < 20 and level < 8) or (((#enemies.yards8 > 3 and mode.rotation == 1) or mode.rotation == 2) and level < 28) then
+                if thp >= 20 or (thp < 20 and level < 8) or (((#enemies.yards8 > 3 and mode.rotation == 1) or mode.rotation == 2) and level < 28) or not isChecked("Use Execute Phase") then
                     if actionList_Single() then return end
                 end
             end -- End Combat Rotation

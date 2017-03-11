@@ -49,10 +49,11 @@ local function createOptions()
         local section
     -- General Options
         section = br.ui:createSection(br.ui.window.profile, "General")
+            br.ui:createCheckbox(section,"OOC Healing","|cff15FF00Enables|cffFFFFFF/|cffD60000Disables |cffFFFFFFout of combat healing|cffFFBB00.")
         -- Travel Shapeshifts
-            br.ui:createCheckbox(section,"Auto Shapeshifts","|cff15FF00Enables|cffFFFFFF/|cffD60000Disables |cffFFFFFFAuto Shapeshifting to best form for situation.|cffFFBB00.")
+            br.ui:createCheckbox(section,"Auto Shapeshifts","|cff15FF00Enables|cffFFFFFF/|cffD60000Disables |cffFFFFFFAuto Shapeshifting to best form for situation|cffFFBB00.")
         -- Break Crowd Control
-            br.ui:createCheckbox(section,"Break Crowd Control","|cff15FF00Enables|cffFFFFFF/|cffD60000Disables |cffFFFFFFAuto Shapeshifting to break crowd control.|cffFFBB00.")
+            br.ui:createCheckbox(section,"Break Crowd Control","|cff15FF00Enables|cffFFFFFF/|cffD60000Disables |cffFFFFFFAuto Shapeshifting to break crowd control|cffFFBB00.")
         br.ui:checkSectionState(section)
     -- Cooldown Options
         section = br.ui:createSection(br.ui.window.profile, "Cooldowns")
@@ -63,14 +64,14 @@ local function createOptions()
         -- Trinkets
             br.ui:createCheckbox(section,"Trinkets")
         --Incarnation: Tree of Life
-            br.ui:createSpinner(section, "Incarnation: Tree of Life",  50,  0,  100,  5,  "Health Percent to Cast At") 
+            br.ui:createSpinner(section, "Incarnation: Tree of Life",  60,  0,  100,  5,  "Health Percent to Cast At") 
             br.ui:createSpinner(section, "Incarnation: Tree of Life Targets",  3,  0,  40,  1,  "Minimum Flourish Targets")
+-- Tranquility
+            br.ui:createSpinner(section, "Tranquility",  50,  0,  100,  5,  "Health Percent to Cast At") 
+            br.ui:createSpinner(section, "Tranquility Targets",  3,  0,  40,  1,  "Minimum Tranquility Targets")
         -- Flourish
             br.ui:createSpinner(section, "Flourish",  80,  0,  100,  5,  "Health Percent to Cast At") 
             br.ui:createSpinner(section, "Flourish Targets",  3,  0,  40,  1,  "Minimum Flourish Targets")
-        -- Tranquility
-            br.ui:createSpinner(section, "Tranquility",  60,  0,  100,  5,  "Health Percent to Cast At") 
-            br.ui:createSpinner(section, "Tranquility Targets",  3,  0,  40,  1,  "Minimum Tranquility Targets")
         br.ui:checkSectionState(section)
     -- Defensive Options
         section = br.ui:createSection(br.ui.window.profile, "Defensive")
@@ -80,28 +81,33 @@ local function createOptions()
         -- Healthstone
             br.ui:createSpinner(section, "Healthstone",  30,  0,  100,  5,  "|cffFFFFFFHealth Percent to Cast At")
         -- Heirloom Neck
-            br.ui:createSpinner(section, "Heirloom Neck",  60,  0,  100,  5,  "|cffFFBB00Health Percentage to use at.");
+            br.ui:createSpinner(section, "Heirloom Neck",  60,  0,  100,  5,  "|cffFFBB00Health Percentage to use at");
         -- Barkskin
-            br.ui:createSpinner(section, "Barkskin",  60,  0,  100,  5,  "|cffFFBB00Health Percentage to use at.");
+            br.ui:createSpinner(section, "Barkskin",  60,  0,  100,  5,  "|cffFFBB00Health Percentage to use at");
+        -- Renewal
+            br.ui:createSpinner(section, "Renewal",  70,  0,  100,  5,  "|cffFFBB00Health Percentage to use at");
         br.ui:checkSectionState(section)
     -- Healing Options
         section = br.ui:createSection(br.ui.window.profile, "Healing")
         -- Efflorescence
-            br.ui:createDropdown(section,"Efflorescence", br.dropOptions.Toggle, 6, "Set auto usage (No Hotkey) or desired hotkey to use Efflorescence.")
-            --br.ui:createDropdownWithout(section,"Efflorescence - Target",{"Best","Target"},1,"Desired Target of Efflorescence")
+            br.ui:createCheckbox(section,"Efflorescence","|cff15FF00Enables|cffFFFFFF/|cffD60000Disables |cffFFFFFFEfflorescence usage|cffFFBB00.")
+            br.ui:createSpinner(section, "Efflorescence recast delay", 15, 8, 29, 2, "|cffFFFFFFDelay to recast Efflo in seconds|cffFFBB00.","", true)
         -- Lifebloom
-            br.ui:createCheckbox(section,"Lifebloom","|cff15FF00Enables|cffFFFFFF/|cffD60000Disables |cffFFFFFFLifebloom usage.|cffFFBB00.")
+            br.ui:createCheckbox(section,"Lifebloom","|cff15FF00Enables|cffFFFFFF/|cffD60000Disables |cffFFFFFFLifebloom usage|cffFFBB00.")
         -- Cenarion Ward
             br.ui:createSpinner(section, "Cenarion Ward",  70,  0,  100,  5,  "|cffFFFFFFHealth Percent to Cast At")
         -- Rejuvenaion
             br.ui:createSpinner(section, "Rejuvenation",  90,  0,  100,  5,  "|cffFFFFFFHealth Percent to Cast At")
-            br.ui:createSpinner(section, "Max Rejuvenation Targets",  10,  0,  20,  1,  "|cffFFFFFFMaximum Rejuvenation Targets")
+            br.ui:createSpinner(section, "Max Rejuvenation Targets",  10,  0,  20,  1,  "|cffFFFFFFMaximum Rejuvenation Targets","", true)
         -- Germination
             br.ui:createSpinner(section, "Germination",  70,  0,  100,  5,  "|cffFFFFFFHealth Percent to Cast At")
+            br.ui:createCheckbox(section,"Germination on tank only","|cff15FF00Enables|cffFFFFFF/|cffD60000Disables |cffFFFFFFGermination on tank usage|cffFFBB00.")
         -- Regrowth
             br.ui:createSpinner(section, "Regrowth",  80,  0,  100,  5,  "|cffFFFFFFHealth Percent to Cast At")
         -- Regrowth Clearcasting
             br.ui:createSpinner(section, "Regrowth Clearcasting",  80,  0,  100,  5,  "|cffFFFFFFHealth Percent to Cast At")
+        -- Regrowth on tank
+            br.ui:createCheckbox(section,"Keep Regrowth on tank","|cff15FF00Enables|cffFFFFFF/|cffD60000Disables |cffFFFFFFRegrowth usage|cffFFBB00.")
         -- Swiftmend
             br.ui:createSpinner(section, "Swiftmend",  60,  0,  100,  5,  "|cffFFFFFFHealth Percent to Cast At")
         -- Healing Touch
@@ -172,9 +178,11 @@ local function runRotation()
         local inCombat                                      = br.player.inCombat
         local inInstance                                    = br.player.instance=="party"
         local inRaid                                        = br.player.instance=="raid"
+        local stealthed                                     = UnitBuffID("player",5215) ~= nil
         local lastSpell                                     = lastSpellCast
         local level                                         = br.player.level
         local lowestHP                                      = br.friend[1].unit
+        local mana                                          = br.player.power.mana.percent
         local mode                                          = br.player.mode
         local perk                                          = br.player.perk        
         local php                                           = br.player.health
@@ -204,7 +212,7 @@ local function runRotation()
         enemies.yards40 = br.player.enemies(40)
 
         if isCastingSpell(spell.healingTouch) and buff.clearcasting.exists() then
-            RunMacroText("/stopcasting")
+            SpellStopCasting()
         end
 
         --ChatOverlay("|cff00FF00Abundance stacks: "..buff.abundance.stack().."")
@@ -238,10 +246,6 @@ local function runRotation()
         end -- End Action List - Extras
         -- Action List - Pre-Combat
         function actionList_PreCombat()
-            -- Efflorescence
-                if isChecked("Efflorescence") and (getOptionValue("Efflorescence") == 6 or (SpecificToggle("Efflorescence") and not GetCurrentKeyBoardFocus())) then
-                    if cast.efflorescence("mouseover","ground") then return end
-                end
             -- Rejuvenation
             if isChecked("Rejuvenation") then
                 rejuvCount = 0
@@ -259,9 +263,9 @@ local function runRotation()
                 end
             end
             -- Regrowth
-           if isChecked("Regrowth") then
+           if isChecked("Regrowth") and lastSpell ~= spell.regrowth then
                 for i = 1, #br.friend do
-                    if br.friend[i].hp <= getValue("Regrowth Clearcasting") and buff.clearcasting.exists() then
+                    if br.friend[i].hp <= getValue("Regrowth Clearcasting") and buff.clearcasting.remain() > 1.5 then
                         if cast.regrowth(br.friend[i].unit) then return end     
                     elseif br.friend[i].hp <= getValue("Regrowth") and buff.regrowth.remain(br.friend[i].unit) <= 1 then
                         if cast.regrowth(br.friend[i].unit) then return end     
@@ -292,15 +296,15 @@ local function runRotation()
                     end
                 end
             -- Tranquility
-                if isChecked("Tranquility") and not isCastingSpell(spell.tranquility) then
+                if isChecked("Tranquility") and not isCastingSpell(spell.tranquility) and not buff.incarnationTreeOfLife.exists() then
                     if getLowAllies(getValue("Tranquility")) >= getValue("Tranquility Targets") then    
                         if cast.tranquility() then return end    
                     end
                 end
             -- Innervate
-                if isChecked("Essence of G'Hanir") and not isCastingSpell(spell.tranquility) and not moving then
-                    if getLowAllies(getValue("Essence of G'Hanir")) >= getValue("Essence of G'Hanir Targets") then    
-                        if cast.innervate() then return end    
+                if not isCastingSpell(spell.tranquility) and mana ~= nil then
+                    if getLowAllies(getValue("Essence of G'Hanir")) >= getValue("Essence of G'Hanir Targets") and mana < 80 then    
+                        if cast.innervate("player") then return end    
                     end
                 end
             -- Trinkets
@@ -403,16 +407,26 @@ local function runRotation()
                 end
             end
             -- Regrowth
-           if isChecked("Regrowth") then
+           if isChecked("Regrowth") and lastSpell ~= spell.regrowth then
                 for i = 1, #br.friend do
-                    if br.friend[i].hp <= getValue("Regrowth Clearcasting") and buff.clearcasting.exists() then
-                        if cast.regrowth(br.friend[i].unit) then return end     
+                    if br.friend[i].hp <= getValue("Regrowth Clearcasting") and buff.clearcasting.remain() > 1.5 then
+                        if cast.regrowth(br.friend[i].unit) then return end
+                    elseif isChecked("Keep Regrowth on tank") and buff.lifebloom.exists(br.friend[i].unit) and buff.regrowth.remain(br.friend[i].unit) <= 1 and br.friend[i].hp <= getValue("Regrowth") then
+                        if cast.regrowth(br.friend[i].unit) then return end
                     elseif br.friend[i].hp <= getValue("Regrowth") and buff.regrowth.remain(br.friend[i].unit) <= 1 then
                         if talent.abundance and buff.abundance.stack() < 3 then
                             if cast.regrowth(br.friend[i].unit) then return end
                         elseif not talent.abundance then
                             if cast.regrowth(br.friend[i].unit) then return end
                         end
+                    end
+                end
+            end
+            -- Healing Touch with abundance stacks >= 5
+           if isChecked("Healing Touch") and not isCastingSpell(spell.tranquility) then
+                for i = 1, #br.friend do                           
+                    if br.friend[i].hp <= getValue("Healing Touch") and talent.abundance and buff.abundance.stack() >= 5 then
+                        if cast.healingTouch(br.friend[i].unit) then return end
                     end
                 end
             end
@@ -426,7 +440,11 @@ local function runRotation()
                 end
                 for i = 1, #br.friend do
                     if br.friend[i].hp <= getValue("Germination") and talent.germination and (rejuvCount < getValue("Max Rejuvenation Targets")) and not buff.rejuvenationGermination.exists(br.friend[i].unit) then
-                        if cast.rejuvenation(br.friend[i].unit) then return end
+                        if isChecked("Germination on tank only") and UnitGroupRolesAssigned(br.friend[i].unit) == "TANK" then
+                            if cast.rejuvenation(br.friend[i].unit) then return end
+                        elseif not isChecked("Germination on tank only") then
+                            if cast.rejuvenation(br.friend[i].unit) then return end
+                        end
                     elseif br.friend[i].hp <= getValue("Rejuvenation") and buff.rejuvenation.remain(br.friend[i].unit) <= 1 and (rejuvCount < getValue("Max Rejuvenation Targets")) then
                         if cast.rejuvenation(br.friend[i].unit) then return end     
                     end
@@ -457,13 +475,26 @@ local function runRotation()
                     end
                 end
             end
+            -- Ephemeral Paradox trinket
+            if hasEquiped(140805) and getBuffRemain("player", 225766) > 2 then
+                if cast.healingTouch("player") then return end
+            end
         end
     -- Action List - DPS
         local function actionList_DPS()
-        -- Sunfire
-            if not cat and not debuff.sunfire.exists("target") then
-                if cast.sunfire("target") then return end
-            end
+        -- Guardian Affinity/Level < 45
+            if talent.guardianAffinity or level < 45 then
+            -- Sunfire
+                if not debuff.sunfire.exists(units.dyn40) then
+                    if cast.sunfire(units.dyn40) then return end
+                end
+            -- Moonfire
+                if not debuff.moonfire.exists(units.dyn40) then
+                    if cast.moonfire(units.dyn40) then return end
+                end
+            -- Solar Wrath
+                if cast.solarWrath() then return end
+            end 
         -- Feral Affinity
             if talent.feralAffinity then
             -- Cat form
@@ -513,7 +544,7 @@ local function runRotation()
         -- Balance Affinity 
             if talent.balanceAffinity then
             -- Moonkin form
-                if not moonkin then
+                if not moonkin and not moving and not travel and not IsMounted() then
                     if cast.moonkinForm() then return end
                 end
             -- Lunar Strike 3 charges
@@ -554,18 +585,26 @@ local function runRotation()
 ---------------------------------
 --- Out Of Combat - Rotations ---
 ---------------------------------
-            if not inCombat and not IsMounted() and getBuffRemain("player", 192002 ) < 10 then
+            if not inCombat and not IsMounted() and not stealthed and getBuffRemain("player", 192002 ) < 10 then
                 actionList_Extras()
-                actionList_PreCombat()
+                if isChecked("OOC Healing") then
+                    actionList_PreCombat()
+                end
             end -- End Out of Combat Rotation
 -----------------------------
 --- In Combat - Rotations --- 
 -----------------------------
-            if inCombat and not IsMounted() and getBuffRemain("player", 192002 ) < 10 then
-                -- Barkskin
+            if inCombat and not IsMounted() and not stealthed and getBuffRemain("player", 192002 ) < 10 then
+            -- Barkskin
                 if isChecked("Barkskin") then
                     if php <= getOptionValue("Barkskin") and inCombat then
                         if cast.barkskin() then return end
+                    end
+                end
+            -- Renewal
+                if isChecked("Renewal") and talent.renewal then
+                    if php <= getOptionValue("Renewal") and inCombat then
+                        if cast.renewal() then return end
                     end
                 end
             -- Healthstone
@@ -599,8 +638,12 @@ local function runRotation()
                     end
                 end
             -- Efflorescence
-                if isChecked("Efflorescence") and (getOptionValue("Efflorescence") == 6 or (SpecificToggle("Efflorescence") and not GetCurrentKeyBoardFocus())) then
-                    if cast.efflorescence("mouseover","ground") then return end
+                if isChecked("Efflorescence") and not moving and (not LastEfflorescenceTime or GetTime() - LastEfflorescenceTime > getOptionValue("Efflorescence recast delay")) then
+                    -- castGroundAtBestLocation(spellID, radius, minUnits, maxRange, minRange, spellType)
+                    if castGroundAtBestLocation(spell.efflorescence, 20, 0, 40, 0, "heal") then
+                        LastEfflorescenceTime = GetTime()
+                        return 
+                    end
                 end
                 actionList_Cooldowns()
                 actionList_AOEHealing()

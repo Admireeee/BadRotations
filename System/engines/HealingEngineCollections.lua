@@ -93,6 +93,8 @@ novaEngineTables.SpecificHPDebuffs = {
 	{ debuff = 165195 , value = 30 }, --http://www.wowhead.com/spell=165195/prototype-pulse-grenade
 	-- Tyrant Velhari
 	{ debuff = 180116 , value = 30}, --http://www.wowhead.com/spell=180166/touch-of-harm
+	-- Chronomatic Anomaly (M)
+	{ debuff = 206609 , value = 30}, --http://www.wowhead.com/spell=206609/time-release
 }
 -- this table will assign role to any unit wearing the unit name
 novaEngineTables.roleTable = {
@@ -128,3 +130,9 @@ novaEngineTables.BadlyDeBuffed = {
 		165195,--http://www.wowhead.com/spell=165195/prototype-pulse-grenade
 
 }
+-- Table for NPCs we do not want to add to table (eg. Hymdal/Odyn after they become friendly)
+novaEngineTables.skipNPC = {
+        "95676", -- Odyn
+        "94960", -- Hynmdall
+        "100482", -- Senegos
+};

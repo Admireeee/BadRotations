@@ -91,6 +91,8 @@ local function createOptions()
             br.ui:createCheckbox(section, "Racial")
             -- Legendary Ring
             br.ui:createCheckbox(section, "Ring of Collapsing Futures")
+            -- Draught of Souls
+            br.ui:createCheckbox(section, "Draught of Souls")
             -- Trinkets
             br.ui:createDropdownWithout(section, "Trinkets", {"|cff00FF001st Only","|cff00FF002nd Only","|cffFFFF00Both","|cffFF0000None"}, 1, "|cffFFFFFFSelect Trinket Usage.")
             -- Touch of the Void
@@ -393,6 +395,12 @@ local function runRotation()
                         return true
                     end
                 end
+            -- Draught of Souls
+                --draught_of_souls,if=equipped.draught_of_souls&((prev_gcd.1.mortal_strike|cooldown.mortal_strike.remains>=3)&buff.battle_cry.remains>=3&debuff.colossus_smash.up&buff.avatar.remains>=3)
+                if hasEquiped(140808) and ((lastCast == spell.mortalStrike or cd.mortalStrike >= 3) and buff.battleCry.remain() >= 3 and debuff.colossusSmash.exists(units.dyn5) and buff.avatar.remain() >= 3) then
+                    useItem(140808)
+                    return true
+                end
             -- Potion
                 -- potion,name=old_war,if=buff.avatar.up&buff.battle_cry.up&debuff.colossus_smash.up|target.time_to_die<=26
                 -- if useCDs() and canUse(strPot) and inRaid and isChecked("Potion") then
@@ -469,7 +477,7 @@ local function runRotation()
         -- Charge
                 -- charge
                 if isChecked("Charge") then
-                    if (cd.heroicLeap > 0 and cd.heroicLeap < 29) or level < 26 then
+                    if (cd.heroicLeap > 0 and cd.heroicLeap < 29) or not isChecked("Heroic Leap") or level < 26 then
                         if cast.charge("target") then return end
                     end
                 end
@@ -478,7 +486,7 @@ local function runRotation()
                 if cast.stormBolt("target") then return end
         -- Heroic Throw
                 -- heroic_throw
-                if lastSpell == spell.charge or charges.charge == 0 then
+                if lastSpell == spell.charge or charges.charge == 0 or not isChecked("Charge") then
                     if cast.heroicThrow("target") then return end
                 end
             end

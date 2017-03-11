@@ -253,7 +253,7 @@ local function runRotation()
                 end
         -- Anti-Magic Shell
                 if isChecked("Anti-Magic Shell") and php <= getOptionValue("Anti-Magic Shell") then
-                    if cast.antimagicShell() then return end
+                    if cast.antiMagicShell() then return end
                 end
         -- Icebound Fortitude
                 if isChecked("Icebound Fortitude") and php <= getOptionValue("Icebound Fortitude") then
@@ -389,7 +389,7 @@ local function runRotation()
                         end
                     end
         -- Death and Decay
-                    if (buff.crimsonScourge.exists() or level < 63) and (#enemies.yards8 > 1 or (#enemies.yards8 == 1 and talent.RapidDecomposition)) then
+                    if (buff.crimsonScourge.exists() or level < 63) and (#enemies.yards8 > 1 or (#enemies.yards8 == 1 and talent.rapidDecomposition)) then
                         if cast.deathAndDecay("best",false,#enemies.yards8,8) then return end
                     end
         -- Death Strike

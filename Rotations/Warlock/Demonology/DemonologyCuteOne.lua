@@ -54,11 +54,19 @@ local function createOptions()
         -- Artifact
             br.ui:createDropdownWithout(section,"Artifact", {"|cff00FF00Everything","|cffFFFF00Cooldowns","|cffFF0000Never"}, 1, "|cffFFFFFFWhen to use Artifact Ability.")
         -- Summon Pet
-            br.ui:createDropdownWithout(section, "Summon Pet", {"Imp","Voidwalker","Felhunter","Succubus","Felguard"}, 1, "|cffFFFFFFSelect default pet to summon.")
+            br.ui:createDropdownWithout(section, "Summon Pet", {"Imp","Voidwalker","Felhunter","Succubus","Felguard","None"}, 1, "|cffFFFFFFSelect default pet to summon.")
         -- Grimoire of Service
-            br.ui:createDropdownWithout(section, "Grimoire of Service", {"Imp","Voidwalker","Felhunter","Succubus","Felguard"}, 1, "|cffFFFFFFSelect pet to Grimoire.")
+            br.ui:createDropdownWithout(section, "Grimoire of Service", {"Imp","Voidwalker","Felhunter","Succubus","Felguard","None"}, 1, "|cffFFFFFFSelect pet to Grimoire.")
+        -- Demonwrath
+            br.ui:createDropdownWithout(section, "Demonwrath", {"Both","AoE","Moving","None"}, 1, "|cffFFFFFF Select Demonwrath usage.")
+        -- Felstorm
+            br.ui:createSpinner(section, "Felstorm", 3, 1, 10, 1, "|cffFFFFFFMinimal number of units Felguard's Felstorm will be used at.")
         -- Mana Tap
             br.ui:createSpinner(section, "Life Tap HP Limit", 30, 0, 100, 5, "|cffFFFFFFHP Limit that Life Tap will not cast below.")
+        -- Multi-Dot Limit
+            br.ui:createSpinnerWithout(section, "Multi-Dot Limit", 5, 0, 10, 1, "|cffFFFFFFUnit Count Limit that DoTs will be cast on.")
+            br.ui:createSpinnerWithout(section, "Multi-Dot HP Limit", 5, 0, 10, 1, "|cffFFFFFFHP Limit that DoTs will be cast/refreshed on.")
+            br.ui:createSpinnerWithout(section, "Doom Boss HP Limit", 10, 1, 20, 1, "|cffFFFFFFHP Limit that Doom will be cast/refreshed on in relation to Boss HP.")
         br.ui:checkSectionState(section)
     -- Cooldown Options
         section = br.ui:createSection(br.ui.window.profile, "Cooldowns")
@@ -67,7 +75,7 @@ local function createOptions()
         -- Trinkets
             br.ui:createCheckbox(section,"Trinkets")
         -- Soul Harvest
-            br.ui:createCheckbox(section,"Soul Harvest")
+            br.ui:createSpinner(section,"Soul Harvest", 2, 1, 5, 1, "|cffFFFFFF Minimal Doom DoTs to cast Soul Harvest")
         -- Summon Doomguard
             br.ui:createCheckbox(section,"Summon Doomguard")
         -- Summon Infernal
@@ -201,6 +209,7 @@ local function runRotation()
 		if profileStop == nil or not inCombat then profileStop = false end
         if castSummonId == nil then castSummonId = 0 end
         if handTimer == nil then handTimer = GetTime() end
+        if isBoss() then dotHPLimit = getOptionValue("Multi-Dot HP Limit")/10 else dotHPLimit = getOptionValue("Multi-Dot HP Limit") end
         if sindoreiSpiteOffCD == nil then sindoreiSpiteOffCD = true end
         if buff.sindoreiSpite.exits and sindoreiSpiteOffCD then
             sindoreiSpiteOffCD = false
@@ -303,6 +312,7 @@ local function runRotation()
 					if getCombatTime() >= (tonumber(getOptionValue("DPS Testing"))*60) and isDummy() then
                         StopAttack()
                         ClearTarget()
+                        PetStopAttack()
                         PetFollow()
 						Print(tonumber(getOptionValue("DPS Testing")) .." Minute Dummy Test Concluded - Profile Stopped")
 						profileStop = true
@@ -344,8 +354,8 @@ local function runRotation()
                     if cast.drainLife() then return end
                 end
         -- Health Funnel
-                if isChecked("Health Funnel") and getHP("pet") <= getOptionValue("Health Funnel") then
-                    if cast.healthFunnel() then return end
+                if isChecked("Health Funnel") and getHP("pet") <= getOptionValue("Health Funnel") and ObjectExists("pet") == true and not UnitIsDeadOrGhost("pet") then
+                    if cast.healthFunnel("pet") then return end
                 end
         -- Unending gResolve
                 if isChecked("Unending Resolve") and php <= getOptionValue("Unending Resolve") and inCombat then
@@ -386,7 +396,7 @@ local function runRotation()
                 end
         -- Soul Harvest
                 -- soul_harvest
-                if isChecked("Soul Harvest") then
+                if isChecked("Soul Harvest") and getOptionValue("Soul Harvest") >= debuff.doom.count() then
                     if cast.soulHarvest() then return end
                 end
         -- Potion
@@ -398,27 +408,28 @@ local function runRotation()
         local function actionList_PreCombat()
             -- Summon Pet
             -- summon_pet,if=!talent.grimoire_of_supremacy.enabled&(!talent.grimoire_of_sacrifice.enabled|buff.demonic_power.down)
-            if not (IsFlying() or IsMounted()) and not talent.grimoireOfSupremacy and (not talent.grimoireOfSacrifice or not buff.demonicPower.exists()) then
-                if (activePetId == 0 or activePetId ~= summonId) and (lastSpell ~= castSummonId or activePetId ~= summonId) then
+            if not (IsFlying() or IsMounted()) and not talent.grimoireOfSupremacy and (not talent.grimoireOfSacrifice or not buff.demonicPower.exists()) and br.timer:useTimer("summonPet", getCastTime(spell.summonVoidwalker) + gcd) then
+                if (activePetId == 0 or activePetId ~= summonId) and (lastSpell ~= castSummonId or activePetId ~= summonId or activePetId == 0) then
                     if summonPet == 1 then
-                        if isKnown(spell.summonFelImp) then
+                        if isKnown(spell.summonFelImp) and (lastSpell ~= spell.summonFelImp or activePetId == 0) then
                             if cast.summonFelImp("player") then castSummonId = spell.summonFelImp; return end
-                        else
+                        elseif lastSpell ~= spell.summonImp then
                             if cast.summonImp("player") then castSummonId = spell.summonImp; return end
                         end
                     end
-                    if summonPet == 2 then
+                    if summonPet == 2 and (lastSpell ~= spell.summonVoidwalker or activePetId == 0) then
                         if cast.summonVoidwalker("player") then castSummonId = spell.summonVoidwalker; return end
                     end
-                    if summonPet == 3 then
+                    if summonPet == 3 and (lastSpell ~= spell.summonFelhunter or activePetId == 0) then
                         if cast.summonFelhunter("player") then castSummonId = spell.summonFelhunter; return end
                     end
-                    if summonPet == 4 then
+                    if summonPet == 4 and (lastSpell ~= spell.summonSuccubus or activePetId == 0) then
                         if cast.summonSuccubus("player") then castSummonId = spell.summonSuccubus; return end
                     end
-                    if summonPet == 5 then
+                    if summonPet == 5 and (lastSpell ~= spell.summonFelguard or activePetId == 0) then
                         if cast.summonFelguard("player") then castSummonId = spell.summonFelguard; return end
                     end
+                    if summonPet == 6 then return end
                 end
             end
             if not inCombat and not (IsFlying() or IsMounted()) then
@@ -443,8 +454,8 @@ local function runRotation()
                             if cast.summonDoomguard("player") then return end
                         end
                     end
-                    if isChecked("Pre-Pull Timer") and pullTimer <= getOptionValue("Pre-Pull Timer") then
-
+                    if isChecked("Pre-Pull Timer") and pullTimer <= getOptionValue("Pre-Pull Timer") and pullTimer ~= 999 then
+                        return true
                     end -- End Pre-Pull
                     if isValidUnit("target") and getDistance("target") < 40 then
                 -- Augmentation
@@ -479,21 +490,25 @@ local function runRotation()
         end -- End Action List - PreCombat
         local function actionList_Opener()
             if isBoss("target") and isValidUnit("target") and opener == false then
-                if (isChecked("Pre-Pull Timer") and pullTimer <= getOptionValue("Pre-Pull Timer")) or not isChecked("Pre-Pull Timer") then
+                if (isChecked("Pre-Pull Timer") and pullTimer <= getOptionValue("Pre-Pull Timer")) or not isChecked("Pre-Pull Timer") or pullTimer == 999 then
                 -- Demonic Empowerment
                     if not DE1 then
                         castOpener("demonicEmpowerment","DE1",1)
                 -- Potion
-                    -- potion,name=deadly_grace
-                    elseif useCDs() and canUse(127843) and isChecked("Potion") and getDistance("target") < 15 then
+                    -- potion
+                    elseif useCDs() and canUse(142117) and isChecked("Potion") and getDistance("target") < 15 then
                         Print("Potion Used!");
-                        useItem(127843)
+                        useItem(142117)
                 -- Demonbolt/Shadowbolt
                     elseif DE1 and not DSB1 then
                         if talent.demonbolt then
                             castOpener("demonbolt","DSB1",2)
                         else
                             castOpener("shadowbolt","DSB1",2)
+                        end
+                -- Pet Attack
+                        if not UnitIsUnit("pettarget","target") then
+                            PetAttack()
                         end
                 -- Doom
                     elseif DSB1 and not DOOM then
@@ -568,8 +583,9 @@ local function runRotation()
     -- Profile Stop | Pause
         if not inCombat and not hastar and profileStop==true then
             profileStop = false
-        elseif (inCombat and profileStop==true) or pause() or mode.rotation==4 then
-            if not pause() then
+        elseif (inCombat and profileStop==true) or IsMounted() or IsFlying() or pause() or mode.rotation==4 then
+            if not pause() and IsPetAttackActive() then
+                PetStopAttack()
                 PetFollow()
             end
             return true
@@ -628,22 +644,23 @@ local function runRotation()
                     end
         -- Service Pet
                     -- service_pet
-                    if br.timer:useTimer("castGrim", gcd) then
+                    if br.timer:useTimer("castGrim", gcd+1) and shards > 0 then
                         if grimoirePet == 1 then
-                            if cast.grimoireImp("player") then prevService = "Imp"; return end
+                            if cast.grimoireImp("target") then prevService = "Imp"; return end
                         end
                         if grimoirePet == 2 then
-                            if cast.grimoireVoidwalker("player") then prevService = "Voidwalker"; return end
+                            if cast.grimoireVoidwalker("target") then prevService = "Voidwalker"; return end
                         end
                         if grimoirePet == 3 then
-                            if cast.grimoireFelhunter("player") then prevService = "Felhunter"; return end
+                            if cast.grimoireFelhunter("target") then prevService = "Felhunter"; return end
                         end
                         if grimoirePet == 4 then
-                            if cast.grimoireSuccubus("player") then prevService = "Succubus"; return end
+                            if cast.grimoireSuccubus("target") then prevService = "Succubus"; return end
                         end
                         if grimoirePet == 5 then
-                            if cast.grimoireFelguard("player") then prevService = "Felguard"; return end
+                            if cast.grimoireFelguard("target") then prevService = "Felguard"; return end
                         end
+                        if summonPet == 6 then return end
                     end
         -- Summon Doomguard
                     -- summon_doomguard,if=!talent.grimoire_of_supremacy.enabled&spell_targets.infernal_awakening<=2&(target.time_to_die>180|target.health.pct<=20|target.time_to_die<30)
@@ -729,13 +746,22 @@ local function runRotation()
                     then
                         if cast.demonicEmpowerment() then return end
                     end
+        -- Felstorm
+                    -- felguard:felstorm
+                    if isChecked("Felstorm") and felguard and petInfo[1].numEnemies >= getOptionValue("Felstorm") and cd.felstorm == 0 then
+                        if cast.commandDemon() then return end
+                    end
         -- Doom
                     -- doom,cycle_targets=1,if=!talent.hand_of_doom.enabled&target.time_to_die>duration&(!ticking|remains<duration*0.3)
-                    for i = 1, #enemies.yards40 do
-                        local thisUnit = enemies.yards40[i]
-                        if UnitIsUnit(thisUnit,"target") or hasThreat(thisUnit) or isDummy(thisUnit) then
-                            if not talent.handOfDoom and ttd(thisUnit) > debuff.doom.duration(thisUnit) and debuff.doom.refresh(thisUnit) then
-                                if cast.doom(thisUnit) then return end
+                    if debuff.doom.count() < getOptionValue("Multi-Dot Limit") and getHP(thisUnit) > dotHPLimit and isValidUnit(thisUnit)
+                        and bossHPLimit(thisUnit,getOptionValue("Doom Boss HP Limit"))
+                    then
+                        for i = 1, #enemies.yards40 do
+                            local thisUnit = enemies.yards40[i]
+                            if UnitIsUnit(thisUnit,"target") or hasThreat(thisUnit) or isDummy(thisUnit) then
+                                if not talent.handOfDoom and ttd(thisUnit) > debuff.doom.duration(thisUnit) and debuff.doom.refresh(thisUnit) then
+                                    if cast.doom(thisUnit) then return end
+                                end
                             end
                         end
                     end
@@ -769,7 +795,10 @@ local function runRotation()
         -- Demonwrath
                     -- demonwrath,chain=1,interrupt=1,if=spell_targets.demonwrath>=3
                     -- demonwrath,moving=1,chain=1,interrupt=1
-                    if demonwrathPet or moving then
+                    if (getOptionValue("Demonwrath") == 1 and (demonwrathPet or moving)) 
+                        or (getOptionValue("Demonwrath") == 2 and demonwrathPet) 
+                        or (getOptionValue("Demonwrath") == 3 and moving) 
+                    then
                         if cast.demonwrath() then return end
                     end
         -- Demonbolt

@@ -61,7 +61,9 @@ System\Engines\ttdTable.lua
 System\UI\ChatOverlay.lua
 System\UI\MinimapButton.lua
 System\UI\UI.lua
-System\UI\Toggles.lua
+## System\UI\Toggles.lua
+System\UI\Toggles\ToggleFunctions.lua
+System\UI\Toggles\Toggles.lua
 System\UI\Elements\Arrow.lua
 System\UI\Elements\Button.lua
 System\UI\Elements\Checkbox.lua
@@ -74,6 +76,7 @@ System\UI\Elements\Text.lua
 System\UI\Elements\Window.lua
 System\UI\Windows\Config.lua
 System\UI\Windows\Debug.lua
+System\UI\Windows\Healing.lua
 System\UI\Windows\Help.lua
 System\UI\Windows\Profile.lua
 
@@ -93,6 +96,8 @@ Rotations\Death Knight\Frost\FrostCuteOne.lua
 
 Rotations\Death Knight\Blood\BloodCuteOne.lua
 
+Rotations\Death Knight\Unholy\THUnholy.lua
+
 
 ## DemonHunter ---------------------------------------------------
 
@@ -104,7 +109,6 @@ Rotations\Demon Hunter\Vengeance\VengeanceDub.lua
 ## Druid ---------------------------------------------------
 
 Rotations\Druid\Feral\FeralCuteOne.lua
-Rotations\Druid\Feral\FeralAveryKey.lua
 
 Rotations\Druid\Guardian\GuardianCuteOne.lua
 
@@ -150,6 +154,8 @@ Rotations\Paladin\Retribution\RetributionCuteOne.lua
 Rotations\Priest\Discipline\DisciplineBizkut.lua
 Rotations\Priest\Discipline\DisciplineCpoworks.lua
 Rotations\Priest\Discipline\DisciplineSvs.lua
+
+Rotations\Priest\Holy\HolySvs.lua
 
 Rotations\Priest\Shadow\ShadowCpoworks.lua
 

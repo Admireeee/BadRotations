@@ -392,16 +392,19 @@ local function runRotation()
 		local function actionList_Cooldowns()
 			if useCDs() and getDistance(units.dyn40) < 40 then
         -- Trinkets
-                -- use_item,slot=trinket2,if=buff.chaos_blades.up|!talent.chaos_blades.enabled
                 if isChecked("Trinkets") then
-                    -- if buff.chaosBlades or not talent.chaosBlades then
-                        if canUse(13) then
-                            useItem(13)
-                        end
-                        if canUse(14) then
-                            useItem(14)
-                        end
-                    -- end
+                    if canUse(11) then
+                        useItem(11)
+                    end
+                    if canUse(12) then
+                        useItem(12)
+                    end
+                    if canUse(13) then
+                        useItem(13)
+                    end
+                    if canUse(14) then
+                        useItem(14)
+                    end
                 end
         -- Legendary Ring
                 -- use_item,slot=finger1
@@ -412,7 +415,7 @@ local function runRotation()
                 end
         -- Racial: Orc Blood Fury | Troll Berserking | Blood Elf Arcane Torrent
                 -- blood_fury,buff.tigers_fury | berserking,buff.tigers_fury | arcane_torrent,buff.tigers_fury
-                if isChecked("Racial") and (br.player.race == "Orc" or br.player.race == "Troll" or br.player.race == "BloodElf") then
+                if isChecked("Racial") and (br.player.race == "Orc" or br.player.race == "Troll" or br.player.race == "BloodElf") and getSpellCD(racial) == 0 then
                     if castSpell("player",racial,false,false,false) then return end
                 end
                 if getOptionValue("APL Mode") == 1 then -- SimC
@@ -462,7 +465,7 @@ local function runRotation()
                         if cast.stormkeeper() then return end
                     end
             -- Flame Shock
-                    if debuff.flameShock.refresh(units.dyn40) then
+                    if debuff.flameShock.refresh("target") and ttd("target") > 15 then
                         if cast.flameShock("target") then StartAttack(); return end
                     else
             -- Lightning Bolt
@@ -496,18 +499,20 @@ local function runRotation()
             if debuff.flameShock.count() < 4 then
                 for i = 1, #enemies.yards40 do
                     local thisUnit = enemies.yards40[i]
-                    if debuff.flameShock.refresh(thisUnit) and (UnitIsUnit(thisUnit,"target") or hasThreat(thisUnit) or isDummy(thisUnit)) then
-                        if cast.flameShock(thisUnit) then return end
+                    if ((isBoss() and bossHPLimit(thisUnit,10)) or solo) and (hasThreat(thisUnit) or isDummy(thisUnit)) then 
+                        if debuff.flameShock.refresh(thisUnit) and ttd(thisUnit) > 15 then
+                            if cast.flameShock(thisUnit) then return end
+                        end
                     end
                 end
             end
         -- Earthquake
             -- earthquake
-            if lastSpell ~= spell.earthquake and power >= 50 and (not hasEquiped(137035) or not buff.echoesOfTheGreatSundering.exists() or #enemies.yards8t > 3) then
+            if lastSpell ~= spell.earthquake and power >= 50 and (not hasEquiped(137034) or not buff.echoesOfTheGreatSundering.exists() or #enemies.yards8t > 3) then
                 if cast.earthquake() then return end
             end
         -- Earth Shock
-            if power >= 50 and #enemies.yards8t < 4 and buff.echoesOfTheGreatSundering.exists() and hasEquiped(137035) then
+            if power >= 50 and #enemies.yards8t < 4 and buff.echoesOfTheGreatSundering.exists() and hasEquiped(137034) then
                 if cast.earthShock() then return end
             end
         -- Lava Burst
@@ -543,8 +548,10 @@ local function runRotation()
             if flameShockCounter < 4 and moving then
                 for i = 1, #enemies.yards40 do
                     local thisUnit = enemies.yards40[i]
-                    if debuff.flameShock.remain(thisUnit) < 2 and (UnitIsUnit(thisUnit,"target") or hasThreat(thisUnit) or isDummy(thisUnit)) then
-                        if cast.flameShock(thisUnit) then return end
+                    if ((isBoss() and bossHPLimit(thisUnit,10)) or solo) and (hasThreat(thisUnit) or isDummy(thisUnit)) then 
+                        if debuff.flameShock.refresh(thisUnit) and ttd(thisUnit) > 15 and debuff.flameShock.remain(thisUnit) < 2 then
+                            if cast.flameShock(thisUnit) then return end
+                        end
                     end
                 end
             end
@@ -565,14 +572,17 @@ local function runRotation()
             if debuff.flameShock.count() < 3 then
                 for i = 1, #enemies.yards40 do
                     local thisUnit = enemies.yards40[i]
-                    if (not debuff.flameShock.exists(thisUnit) or debuff.flameShock.remain(thisUnit) <= gcd) then
-                        if cast.flameShock(thisUnit) then return end
+                    if ((isBoss() and bossHPLimit(thisUnit,10)) or solo) and (hasThreat(thisUnit) or isDummy(thisUnit)) then 
+                        if debuff.flameShock.refresh(thisUnit) and ttd(thisUnit) > 15 and (not debuff.flameShock.exists(thisUnit) or debuff.flameShock.remain(thisUnit) <= gcd) then
+                            if cast.flameShock(thisUnit) then return end
+                        end
                     end
                 end
             end
             -- flame_shock,if=maelstrom>=20&remains<=buff.ascendance.duration()&cooldown.ascendance.remain()s+buff.ascendance.duration()<=duration
             if power >= 20 and debuff.flameShock.remain(units.dyn40) <= buff.ascendance.duration()
                 and cd.ascendance + buff.ascendance.duration() <= debuff.flameShock.duration(units.dyn40)
+                and ttd(units.dyn40) > 15
             then
                 if cast.flameShock() then return end
             end
@@ -596,7 +606,7 @@ local function runRotation()
             if cast.elementalBlast() then return end
         -- Liquid Magma Totem
             -- liquid_magma_totem,if=raid_event.adds.count()<3|raid_event.adds.in>50
-            if (#enemies.yards8 < 3 or addsIn > 50) and getDistance(units.dyn8) < 8 and lastSpell ~= spell.liquidMagmaTotem then
+            if (#enemies.yards8 < 3) and getDistance(units.dyn8) < 8 and lastSpell ~= spell.liquidMagmaTotem then
                 if cast.liquidMagmaTotem("target") then return end
             end
         -- Lightning Bolt
@@ -611,7 +621,7 @@ local function runRotation()
             end
         -- Flame Shock
             -- flame_shock,if=maelstrom>=20&buff.elemental_focus.up,target_if=refreshable
-            if power >= 20 and buff.elementalFocus.exists() and debuff.flameShock.refresh(units.dyn40) then
+            if power >= 20 and buff.elementalFocus.exists() and debuff.flameShock.refresh(units.dyn40) and ttd(units.dyn40) > 15 then
                 if cast.flameShock() then return end
             end
         -- Earth Shock
@@ -651,7 +661,7 @@ local function runRotation()
             end
         -- Flame Shock
             -- flame_shock,moving=1,target_if=refreshable
-            if moving and debuff.flameShock.refresh(units.dyn40) then
+            if moving and debuff.flameShock.refresh(units.dyn40) and ttd(units.dyn40) > 15 then
                 if cast.flameShock() then return end
             end
         -- Earth Shock
@@ -661,7 +671,7 @@ local function runRotation()
             end
         -- Flame Shock
             -- flame_shock,moving=1,if=movement.distance>6
-            if moving and getDistance("target") > 6 then
+            if moving and getDistance("target") > 6 and ttd("target") > 15 then
                 if cast.flameShock("target") then return end
             end
         end -- End Action List - Single Target: Ascendance
@@ -672,8 +682,10 @@ local function runRotation()
             if debuff.flameShock.count() < 3 then
                 for i = 1, #enemies.yards40 do
                     local thisUnit = enemies.yards40[i]
-                    if (not debuff.flameShock.exists(thisUnit) or debuff.flameShock.remain(thisUnit) <= gcd) then
-                        if cast.flameShock(thisUnit) then return end
+                    if ((isBoss() and bossHPLimit(thisUnit,10)) or solo) and (hasThreat(thisUnit) or isDummy(thisUnit)) then 
+                        if debuff.flameShock.refresh(thisUnit) and ttd(thisUnit) > 15 and (not debuff.flameShock.exists(thisUnit) or debuff.flameShock.remain(thisUnit) <= gcd) then
+                            if cast.flameShock(thisUnit) then return end
+                        end
                     end
                 end
             end
@@ -707,7 +719,7 @@ local function runRotation()
             end
         -- Liquid Magma Totem
             -- liquid_magma_totem,if=raid_event.adds.count()<3|raid_event.adds.in>50
-            if (#enemies.yards8 < 3 or addsIn > 50) and getDistance(units.dyn8) < 8 and lastSpell ~= spell.liquidMagmaTotem then
+            if (#enemies.yards8 < 3) and getDistance(units.dyn8) < 8 and lastSpell ~= spell.liquidMagmaTotem then
                 if cast.liquidMagmaTotem("target") then return end
             end
         -- Lightning Bolt
@@ -727,7 +739,7 @@ local function runRotation()
             end
         -- Flame Shock
             -- flame_shock,if=maelstrom>=20&buff.elemental_focus.up,target_if=refreshable
-            if power >= 20 and buff.elementalFocus.exists() and debuff.flameShock.refresh(units.dyn40) then
+            if power >= 20 and buff.elementalFocus.exists() and debuff.flameShock.refresh(units.dyn40) and ttd(units.dyn40) > 15 then
                 if cast.flameShock() then return end
             end
         -- Frost Shock
@@ -767,7 +779,7 @@ local function runRotation()
             end
         -- Flame Shock
             -- flame_shock,moving=1,target_if=refreshable
-            if moving and debuff.flameShock.refresh(units.dyn40) then
+            if moving and debuff.flameShock.refresh(units.dyn40) and ttd(units.dyn40) > 15 then
                 if cast.flameShock() then return end
             end
         -- Earth Shock
@@ -777,7 +789,7 @@ local function runRotation()
             end
         -- Flame Shock
             -- flame_shock,moving=1,if=movement.distance>6
-            if moving and getDistance("target") > 6 then
+            if moving and getDistance("target") > 6 and ttd("target") > 15 then
                 if cast.flameShock("target") then return end
             end
         end -- End Action List - Single Target: Icy Fury
@@ -788,8 +800,10 @@ local function runRotation()
             if debuff.flameShock.count() < 3 then
                 for i = 1, #enemies.yards40 do
                     local thisUnit = enemies.yards40[i]
-                    if (not debuff.flameShock.exists(thisUnit) or debuff.flameShock.remain(thisUnit) <= gcd) then
-                        if cast.flameShock(thisUnit) then return end
+                    if ((isBoss() and bossHPLimit(thisUnit,10)) or solo) and (hasThreat(thisUnit) or isDummy(thisUnit)) then 
+                        if debuff.flameShock.refresh(thisUnit) and ttd(thisUnit) > 15 and (not debuff.flameShock.exists(thisUnit) or debuff.flameShock.remain(thisUnit) <= gcd) then
+                            if cast.flameShock(thisUnit) then return end
+                        end
                     end
                 end
             end
@@ -823,7 +837,7 @@ local function runRotation()
             end
         -- Flame Shock
             -- flame_shock,if=maelstrom>=20&buff.elemental_focus.up,target_if=refreshable
-            if power >= 20 and buff.elementalFocus.exists() and debuff.flameShock.exists(units.dyn40) and debuff.flameShock.refresh(units.dyn40) then
+            if power >= 20 and buff.elementalFocus.exists() and debuff.flameShock.exists(units.dyn40) and debuff.flameShock.refresh(units.dyn40) and ttd(units.dyn40) > 15 then
                 if cast.flameShock() then return end
             end
         -- Earth Shock
@@ -870,7 +884,7 @@ local function runRotation()
             end
         -- Flame Shock
             -- flame_shock,moving=1,target_if=refreshable
-            if moving and debuff.flameShock.refresh(units.dyn40) then
+            if moving and debuff.flameShock.refresh(units.dyn40) and ttd(units.dyn40) > 15 then
                 if cast.flameShock() then return end
             end
         -- Earth Shock
@@ -880,7 +894,7 @@ local function runRotation()
             end
         -- Flame Shock
             -- flame_shock,moving=1,if=movement.distance>6
-            if moving and getDistance("target") > 6 then
+            if moving and getDistance("target") > 6 and ttd("target") > 15 then
                 if cast.flameShock("target") then return end
             end
         end  -- End Single Target Action List
@@ -939,17 +953,35 @@ local function runRotation()
                             -- elemental_mastery
                             if cast.elementalMastery() then return end
                         end
-            -- Racials
-                        -- blood_fury,if=!talent.ascendance.enabled|buff.ascendance.up|cooldown.ascendance.remain()s>50
-                        -- berserking,if=!talent.ascendance.enabled|buff.ascendance.up
-                        if not talent.ascendance or buff.ascendance.exists() or cd.ascendance > 50 then
-                            if race == "Orc" then
-                                if castRacial() then return end
+            -- Trinkets
+                        if isChecked("Trinkets") then
+                            if canUse(13) then
+                                useItem(13)
+                            end
+                            if canUse(14) then
+                                useItem(14)
                             end
                         end
-                        if not talent.ascendance or buff.ascendance.exists() then
-                            if race == "Troll" then
-                                if castRacial() then return end
+        -- Legendary Ring
+                        -- use_item,slot=finger1
+                        if isChecked("Legendary Ring") then
+                            if hasEquiped(124636) and canUse(124636) then
+                                useItem(124636)
+                            end
+                        end
+        -- Racial: Orc Blood Fury | Troll Berserking
+                        -- blood_fury,if=!talent.ascendance.enabled|buff.ascendance.up|cooldown.ascendance.remain()s>50
+                        -- berserking,if=!talent.ascendance.enabled|buff.ascendance.up
+                        if isChecked("Racial") and getSpellCD(racial) == 0 then
+                            if not talent.ascendance or buff.ascendance.exists() or cd.ascendance > 50 then
+                                if br.player.race == "Orc" then
+                                    if castSpell("player",racial,false,false,false)  then return end
+                                end
+                            end
+                            if not talent.ascendance or buff.ascendance.exists() then
+                                if br.player.race == "Troll" then
+                                    if castSpell("player",racial,false,false,false)  then return end
+                                end
                             end
                         end
                     end

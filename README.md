@@ -1,4 +1,4 @@
-# BadRotations
+De BadRotations
 
 ## Patch 7.0+
 
@@ -107,9 +107,9 @@ CuteOne |  Full   | 7.1.5 |   100% | :interrobang:
 
 - Unholy
 
-author          | support | patch | status | raidable?
-:-------------- | :-----: | :---: | -----: | :-------:
-No Profiles Yet |         |       |        |
+author   | support | patch | status | raidable?
+:------- | :-----: | :---: | -----: | :-------:
+THUnholy | Full    | 7.1.5 |  100%  | :white_check_mark:
 
 ### Demon Hunter
 
@@ -132,7 +132,6 @@ Dubwub  | Inactive |  7.1  |   100% |   :interrobang:
 
 author   | support  | patch | status |     raidable?
 :------- | :------: | :---: | -----: | :----------------:
-Averykey | Inactive |  7.0  |   100% |   :interrobang:
 CuteOne  |   Full   | 7.1.5 |   100% | :white_check_mark:
 
 - Guardian
@@ -247,7 +246,7 @@ Bizkut       |     Full      | 7.1.5 |    100% |   :interrobang:
 
 author          | support | patch | status | raidable?
 :-------------- | :-----: | :---: | -----: | :-------:
-No Profiles Yet |         |       |        |
+Svs    |  Full   | 7.1.5 |    100% | :white_check_mark:
 
 - Shadow
 
@@ -295,7 +294,7 @@ CuteOne |  Full   | 7.1.5 |   100% | :white_check_mark:
 
 author | support | patch | status |     raidable?
 :----- | :-----: | :---: | -----: | :----------------:
-Svs    |  Full   | 7.1.5 |    90% | :heavy_check_mark:
+Svs    |  Full   | 7.1.5 |    100% | :white_check_mark:
 
 ### Warlock
 
@@ -311,7 +310,7 @@ author  | support | patch | status |     raidable?
 :------ | :-----: | :---: | -----: | :----------------:
 CuteOne |  Full   | 7.1.5 |   100% | :white_check_mark:
 
-- Destrustruction
+- Destruction
 
 author  | support | patch | status |     raidable?
 :------ | :-----: | :---: | -----: | :----------------:

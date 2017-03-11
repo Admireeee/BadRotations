@@ -46,6 +46,8 @@ local function createOptions()
             br.ui:createDropdownWithout(section, "APL Mode", {"|cffFFFFFFSimC","|cffFFFFFFAMR"}, 1, "|cffFFFFFFSet APL Mode to use.")
             -- Dummy DPS Test
             br.ui:createSpinner(section, "DPS Testing",  5,  5,  60,  5,  "|cffFFFFFFSet to desired time for test in minuts. Min: 5 / Max: 60 / Interval: 5")
+            -- Opener
+            br.ui:createCheckbox(section, "Opener")
             -- Greater Blessing of Might
             -- br.ui:createCheckbox(section, "Greater Blessing of Might")
             -- Hand of Freedom
@@ -92,7 +94,7 @@ local function createOptions()
             br.ui:createSpinner(section, "Blinding Light - HP", 50, 0, 100, 5, "|cffFFFFFFHealth Percent to Cast At")
             br.ui:createSpinner(section, "Blinding Light - AoE", 3, 0, 10, 1, "|cffFFFFFFNumber of Units in 5 Yards to Cast At")
             -- Cleanse Toxin
-            br.ui:createDropdown(section, "Clease Toxin", {"|cff00FF00Player Only","|cffFFFF00Selected Target","|cffFF0000Mouseover Target"}, 1, "|ccfFFFFFFTarget to Cast On")
+            br.ui:createDropdown(section, "Clease Toxin", {"|cff00FF00Player Only","|cffFFFF00Selected Target","|cffFF0000Mouseover Target"}, 1, "|cffFFFFFFTarget to Cast On")
             -- Divine Shield
             br.ui:createSpinner(section, "Divine Shield",  50,  0,  100,  5,  "|cffFFBB00Health Percentage to use at.")
             -- Eye for an Eye
@@ -105,8 +107,9 @@ local function createOptions()
             br.ui:createSpinner(section, "Justicar's Vengeance",  50,  0,  100,  5,  "|cffFFBB00Health Percentage to use at.")
             -- Lay On Hands
             br.ui:createSpinner(section, "Lay On Hands",  50,  0,  100,  5,  "|cffFFBB00Health Percentage to use at.")
+            br.ui:createDropdownWithout(section, "Lay on Hands Target", {"|cffFFFFFFAll","|cffFFFFFFTanks", "|cffFFFFFFSelf"}, 1, "|cffFFFFFFTarget for LoH")
             -- Redemption
-            br.ui:createDropdown(section, "Redemption", {"|cffFFFF00Selected Target","|cffFF0000Mouseover Target"}, 1, "|ccfFFFFFFTarget to Cast On")
+            br.ui:createDropdown(section, "Redemption", {"|cffFFFF00Selected Target","|cffFF0000Mouseover Target"}, 1, "|cffFFFFFFTarget to Cast On")
         br.ui:checkSectionState(section)
         -------------------------
         --- INTERRUPT OPTIONS ---
@@ -195,7 +198,20 @@ local function runRotation()
 
         if profileStop == nil then profileStop = false end
         if opener == nil then opener = false end
-        if not inCombat and not ObjectExists("target") then opener = false end
+        if not inCombat and not ObjectExists("target") then
+            opener = false
+            JUD1 = false
+            BOJ1 = false
+            CRU1 = false
+            EXE1 = false
+            TMV1 = false
+            WOA1 = false
+            TMV2 = false
+            ARC1 = false
+            TMV3 = false
+            CRS1 = false
+            TMV4 = false
+        end
         judgmentExists = debuff.judgment.exists(units.dyn5)
         judgmentRemain = debuff.judgment.remain(units.dyn5)
         if debuff.judgment.exists(units.dyn5) or level < 42 or (cd.judgment > 2 and not debuff.judgment.exists(units.dyn5)) then
@@ -317,8 +333,25 @@ local function runRotation()
                 end
         -- Lay On Hands
                 if isChecked("Lay On Hands") then
-                    if getHP(lowestUnit) < getOptionValue("Lay On Hands") and inCombat then
-                        if cast.layOnHands(lowestUnit) then return end
+                    -- if getHP(lowestUnit) < getOptionValue("Lay On Hands") and inCombat then
+                    --     if cast.layOnHands(lowestUnit) then return end
+                    -- end
+                    if getOptionValue("Lay on Hands Target") == 1 then
+                        for i = 1, #br.friend do
+                            if br.friend[i].hp <= getValue ("Lay on Hands") then
+                                if cast.layOnHands(br.friend[i].unit) then return end
+                            end
+                        end
+                    elseif getOptionValue("Lay on Hands Target") == 2 then
+                        for i = 1, #br.friend do
+                            if br.friend[i].hp <= getValue ("Lay on Hands") and UnitGroupRolesAssigned(br.friend[i].unit) == "TANK" then
+                                if cast.layOnHands(br.friend[i].unit) then return end
+                            end
+                        end
+                    elseif getOptionValue("Lay on Hands Target") == 3 then
+                        if php <= getValue("Lay on Hands") then
+                            if cast.layOnHands("player") then return end
+                        end
                     end
                 end
         -- Redemption
@@ -384,16 +417,66 @@ local function runRotation()
         end -- End Action List - Cooldowns
     -- Action List - PreCombat
         local function actionList_PreCombat()
-            -- PreCombat abilities listed here
-        end -- End Action List - PreCombat
-    -- Action List - Opener
-        local function actionList_Opener()
-            if isValidUnit("target") and not opener then
+            if isValidUnit("target") and (not isBoss("target") or not isChecked("Opener")) then
+        -- Divine Hammer
+                if cast.divineHammer() then return end
         -- Judgment
                 if cast.judgment("target") then return end
         -- Start Attack
                 if getDistance("target") < 5 then StartAttack() end
-                opener = true
+            end
+        end -- End Action List - PreCombat
+    -- Action List - Opener
+        local function actionList_Opener()
+            if isValidUnit("target") and getDistance("target") < 5 then
+                if isChecked("Opener") and isBoss("target") and opener == false then
+                    if not JUD1 then
+                        Print("Starting Opener")
+            -- Divine Hammer
+                        cast.divineHammer()
+            -- Judgment
+                        if castOpener("judgment","JUD1",1) then return end
+                    elseif JUD1 and not BOJ1 then
+            -- Blade of Justice
+                        if talent.bladeOfWrath then
+                            if castOpener("bladeOfJustice","BOJ1",2) then return end
+                        else
+                            if castOpener("divineHammer","BOJ1",2) then return end
+                        end
+                    elseif BOJ1 and not CRU1 then
+            -- Crusade
+                        if castOpener("avengingWrath","CRU1",3) then return end
+                    elseif CRU1 and not EXE1 then
+            -- Execution Sentence / Templar's Verdict
+                        if talent.executionSentence then
+                            if castOpener("executionSentence","EXE1",4) then return end
+                        else
+                            if castOpener("templarsVerdict","EXE1",4) then return end
+                        end
+                    elseif EXE1 and not WOA1 then
+            -- Wake of Ashes
+                        if castOpener("wakeOfAshes","WOA1",5) then return end
+                    elseif WOA1 and not TMV1 then
+            -- Templar's Verdict 
+                        if castOpener("templarsVerdict","TMV1",6) then return end
+                    elseif TMV1 and not ARC1 then
+                        if br.player.race == "BloodElf" then
+            -- Arcane Torrent
+                            castSpell("player",racial,false,false,false)
+                            if castOpener("templarsVerdict","ARC1",7) then return end
+                        else
+                            if castOpener("crusaderStrike","ARC1",7) then return end
+                        end
+                    elseif ARC1 and not TMV2 then
+                        if castOpener("templarsVerdict","TMV2",8) then return end
+                    elseif TMV2 then
+                        opener = true;
+                        Print("Opener Complete")
+                        return
+                    end
+                else
+                    opener = true
+                end
             end
         end -- End Action List - Opener
 ---------------------
@@ -402,7 +485,7 @@ local function runRotation()
     --Profile Stop | Pause
         if not inCombat and not hastar and profileStop == true then
             profileStop = false
-        elseif (inCombat and profileStop == true) or (IsMounted() or IsFlying()) or pause() or mode.rotation == 4 then
+        elseif (inCombat and profileStop == true) or ((IsMounted() or IsFlying()) and not UnitBuffID("player",220507) and not buff.divineSteed.exists()) or pause() or mode.rotation == 4 then
             return true
         else
 -----------------------
@@ -440,6 +523,8 @@ local function runRotation()
 --- In Combat - SimCraft APL ---
 --------------------------------
                 if getOptionValue("APL Mode") == 1 then
+            -- Opener
+                    if actionList_Opener() then return end
             -- Start Attack
                     if getDistance(units.dyn5) < 5 then
                         if not IsCurrentSpell(6603) then
@@ -486,7 +571,7 @@ local function runRotation()
                         end
             -- Avenging Wrath
                         -- avenging_wrath
-                        if isChecked("Avenging Wrath") and not talent.crusade then
+                        if isChecked("Avenging Wrath") and not talent.crusade and getDistance(units.dyn5) < 5 then
                             if cast.avengingWrath() then return end
                         end
             -- Shield of Vengeance
@@ -496,7 +581,7 @@ local function runRotation()
                         end
             -- Crusade
                         -- crusade,if=holy_power>=5&!equipped.137048|((equipped.137048|race.blood_elf)&time<2|time>2&holy_power>=4)
-                        if isChecked("Crusade") and talent.crusade then
+                        if isChecked("Crusade") and talent.crusade and getDistance(units.dyn5) < 5 then
                             if (holyPower >= 5 and not hasEquiped(137048)) or ((hasEquiped(137048) or race == "BloodElf") and combatTime < 2 or combatTime > 2 and holyPower >= 4) then
                                 if cast.avengingWrath() then return end
                             end
@@ -513,7 +598,8 @@ local function runRotation()
                     -- divine_storm,if=debuff.judgment.up&spell_targets.divine_storm>=2&holy_power>=3&buff.crusade.up&(buff.crusade.stack()<15|buff.bloodlust.up)
                     -- divine_storm,if=debuff.judgment.up&spell_targets.divine_storm>=2&holy_power>=5&(!talent.crusade.enabled|cooldown.crusade.remain()s>gcd*3)
                     if not isChecked("Justicar's Vengeance") or (isChecked("Justicar's Vengeance") and php >= getOptionValue("Justicar's Vengeance")) then
-                        if judgmentVar and #enemies.yards8 >= getOptionValue("Divine Storm Units") and ((buff.divinePurpose.exists() and buff.divinePurpose.remain() < gcd * 2)
+                        if judgmentVar and ((mode.rotation == 1 and #enemies.yards8 >= getOptionValue("Divine Storm Units")) or mode.rotation == 2) 
+                            and ((buff.divinePurpose.exists() and buff.divinePurpose.remain() < gcd * 2)
                             or (holyPower >= 5 and buff.divinePurpose.exists())
                             or (holyPower >= 3 and buff.crusade.exists() and (buff.crusade.stack() < 15 or hasBloodLust()))
                             or (holyPower >= 5 and (not talent.crusade or cd.crusade > gcd * 3 or not isChecked("Crusade") or not useCDs())))
@@ -537,7 +623,8 @@ local function runRotation()
                     -- templars_verdict,if=debuff.judgment.up&holy_power>=3&buff.crusade.up&(buff.crusade.stack()<15|buff.bloodlust.up)
                     -- templars_verdict,if=debuff.judgment.up&holy_power>=5&(!talent.crusade.enabled|cooldown.crusade.remain()s>gcd*3)
                     if not isChecked("Justicar's Vengeance") or (isChecked("Justicar's Vengeance") and php >= getOptionValue("Justicar's Vengeance")) then
-                        if judgmentVar and ((buff.divinePurpose.exists() and buff.divinePurpose.remain() < gcd * 2)
+                        if judgmentVar and ((mode.rotation == 1 and #enemies.yards8 < getOptionValue("Divine Storm Units")) or mode.rotation == 3)
+                            and ((buff.divinePurpose.exists() and buff.divinePurpose.remain() < gcd * 2)
                             or (holyPower >= 5 and buff.divinePurpose.exists())
                             or (holyPower >= 3 and buff.crusade.exists() and (buff.crusade.stack() < 15 or hasBloodLust()))
                             or (holyPower >= 5 and (not talent.crusade or cd.crusade > gcd * 3 or not isChecked("Crusade") or not useCDs())))
@@ -548,7 +635,7 @@ local function runRotation()
             -- Divine Storm
                     -- divine_storm,if=debuff.judgment.up&holy_power>=3&spell_targets.divine_storm>=2&(cooldown.wake_of_ashes.remain()s<gcd*2&artifact.wake_of_ashes.enabled|buff.whisper_of_the_nathrezim.up&buff.whisper_of_the_nathrezim.remain()s<gcd)&(!talent.crusade.enabled|cooldown.crusade.remain()s>gcd*4)
                     if not isChecked("Justicar's Vengeance") or (isChecked("Justicar's Vengeance") and php >= getOptionValue("Justicar's Vengeance")) then
-                        if judgmentVar and holyPower >= 3 and #enemies.yards8 >= getOptionValue("Divine Storm Units")
+                        if judgmentVar and holyPower >= 3 and ((mode.rotation == 1 and #enemies.yards8 >= getOptionValue("Divine Storm Units")) or mode.rotation == 2)
                             and ((cd.wakeOfAshes < gcd * 2 and artifact.wakeOfAshes) or (buff.whisperOfTheNathrezim.exists() and buff.whisperOfTheNathrezim.remain() < gcd) or not artifact.wakeOfAshes)
                             and (not talent.crusade or cd.crusade > gcd * 4 or not isChecked("Crusade") or not useCDs())
                         then
@@ -565,7 +652,7 @@ local function runRotation()
             -- Templar's Verdict
                     -- templars_verdict,if=debuff.judgment.up&holy_power>=3&(cooldown.wake_of_ashes.remain()s<gcd*2&artifact.wake_of_ashes.enabled|buff.whisper_of_the_nathrezim.up&buff.whisper_of_the_nathrezim.remain()s<gcd)&(!talent.crusade.enabled|cooldown.crusade.remain()s>gcd*4)
                     if not isChecked("Justicar's Vengeance") or (isChecked("Justicar's Vengeance") and php >= getOptionValue("Justicar's Vengeance")) then
-                        if judgmentVar and holyPower >= 3
+                        if judgmentVar and holyPower >= 3 and ((mode.rotation == 1 and #enemies.yards8 < getOptionValue("Divine Storm Units")) or mode.rotation == 3)
                             and ((cd.wakeOfAshes < gcd * 2 and artifact.wakeOfAshes) or (buff.whisperOfTheNathrezim.exists() and buff.whisperOfTheNathrezim.remain() < gcd) or not artifact.wakeOfAshes)
                             and (not talent.crusade or cd.crusade < gcd * 4 or not isChecked("Crusade") or not useCDs())
                         then
@@ -586,9 +673,11 @@ local function runRotation()
                     end
             -- Divine Hammer
                     -- divine_hammer,if=holy_power<=3&buff.whisper_of_the_nathrezim.up&buff.whisper_of_the_nathrezim.remain()s>gcd&buff.whisper_of_the_nathrezim.remain()s<gcd*3&debuff.judgment.up&debuff.judgment.remain()s>gcd*2
-                    if talent.divineHammer and holyPower <= 3 and buff.whisperOfTheNathrezim.exists() and buff.whisperOfTheNathrezim.remain() > gcd and buff.whisperOfTheNathrezim.remain() < gcd * 3 and judgmentVar and debuff.judgment.remain(units.dyn5) > gcd * 2 then
-                        if cast.divineHammer() then return end
-                    end
+                    -- if ((mode.rotation == 1 and #enemies.yards8 >= getOptionValue("Divine Storm Units")) or mode.rotation == 2) then
+                        if talent.divineHammer and holyPower <= 3 and buff.whisperOfTheNathrezim.exists() and buff.whisperOfTheNathrezim.remain() > gcd and buff.whisperOfTheNathrezim.remain() < gcd * 3 and judgmentVar and debuff.judgment.remain(units.dyn5) > gcd * 2 then
+                            if cast.divineHammer() then return end
+                        end
+                    -- end
             -- Blade of Justice
                     -- blade_of_justice,if=talent.blade_of_wrath.enabled&holy_power<=3
                     if talent.bladeOfWrath and holyPower <= 3 then
@@ -611,9 +700,11 @@ local function runRotation()
                     end
             -- Divine Hammer
                     -- divine_hammer,if=holy_power<=2|(holy_power<=3&(cooldown.zeal.charges_fractional<=1.34|cooldown.crusader_strike.charges_fractional<=1.34))
-                    if talent.divineHammer and holyPower <= 2 or (holyPower <= 3 and (charges.frac.zeal <= 1.34 or charges.frac.crusaderStrike <= 1.34)) then
-                        if cast.divineHammer() then return end
-                    end
+                    -- if ((mode.rotation == 1 and #enemies.yards8 >= getOptionValue("Divine Storm Units")) or mode.rotation == 2) then
+                        if talent.divineHammer and holyPower <= 2 or (holyPower <= 3 and (charges.frac.zeal <= 1.34 or charges.frac.crusaderStrike <= 1.34)) then
+                            if cast.divineHammer() then return end
+                        end
+                    -- end
             -- Judgement
                     -- judgment,if=holy_power>=3|((cooldown.zeal.charges_fractional<=1.67|cooldown.crusader_strike.charges_fractional<=1.67)&(cooldown.divine_hammer.remain()s>gcd|cooldown.blade_of_justice.remain()s>gcd))|(talent.greater_judgment.enabled&target.health.pct>50)
                     if holyPower >= 3 or ((charges.frac.zeal <= 1.67 or charges.frac.crusaderStrike <= 1.67) and (cd.divineHammer > gcd or cd.bladeOfJustice > gcd))
@@ -629,7 +720,7 @@ local function runRotation()
                     -- divine_storm,if=debuff.judgment.up&spell_targets.divine_storm>=2&buff.the_fires_of_justice.react&(!talent.crusade.enabled|cooldown.crusade.remain()s>gcd*3)
                     -- divine_storm,if=debuff.judgment.up&spell_targets.divine_storm>=2&(holy_power>=4|((cooldown.zeal.charges_fractional<=1.34|cooldown.crusader_strike.charges_fractional<=1.34)&(cooldown.divine_hammer.remain()s>gcd|cooldown.blade_of_justice.remain()s>gcd)))&(!talent.crusade.enabled|cooldown.crusade.remain()s>gcd*4)
                     if not isChecked("Justicar's Vengeance") or (isChecked("Justicar's Vengeance") and php >= getOptionValue("Justicar's Vengeance")) then
-                        if judgmentVar and #enemies.yards8 >= getOptionValue("Divine Storm Units")
+                        if judgmentVar and ((mode.rotation == 1 and #enemies.yards8 >= getOptionValue("Divine Storm Units")) or mode.rotation == 2)
                             and (buff.divinePurpose.exists()
                             or (buff.theFiresOfJustice.exists() and (not talent.crusade or cd.crusade > gcd * 3 or not isChecked("Crusade") or not useCDs()))
                             or (holyPower >= 4 or ((charges.frac.zeal <= 1.34 or charges.frac.crusaderStrike <= 1.34) and (cd.divineHammer > gcd or cd.bladeOfJustice > gcd)) and (not talent.crusade or cd.crusade > gcd * 4 or not isChecked("Crusade") or not useCDs())))
@@ -650,6 +741,7 @@ local function runRotation()
                     -- templars_verdict,if=debuff.judgment.up&(holy_power>=4|((cooldown.zeal.charges_fractional<=1.34|cooldown.crusader_strike.charges_fractional<=1.34)&(cooldown.divine_hammer.remain()s>gcd|cooldown.blade_of_justice.remain()s>gcd)))&(!talent.crusade.enabled|cooldown.crusade.remain()s>gcd*4)
                     if not isChecked("Justicar's Vengeance") or (isChecked("Justicar's Vengeance") and php >= getOptionValue("Justicar's Vengeance")) then
                         if judgmentVar
+                            and ((mode.rotation == 1 and #enemies.yards8 < getOptionValue("Divine Storm Units")) or mode.rotation == 3)
                             and (buff.divinePurpose.exists()
                             or (buff.theFiresOfJustice.exists() and (not talent.crusade or cd.crusade > gcd * 3 or not isChecked("Crusade") or not useCDs()))
                             or (holyPower >= 4 or ((charges.frac.zeal <= 1.34 or charges.frac.crusaderStrike <= 1.34) and (cd.divineHammer > gcd or cd.bladeOfJustice > gcd)) and (not talent.crusade or cd.crusade > gcd * 4 or not isChecked("Crusade") or not useCDs())))
@@ -669,12 +761,12 @@ local function runRotation()
                     end
             -- Divine Storm
                     -- divine_storm,if=debuff.judgment.up&holy_power>=3&spell_targets.divine_storm>=2&(!talent.crusade.enabled|cooldown.crusade.remain()s>gcd*5)
-                    if judgmentVar and holyPower >= 3 and #enemies.yards8 >= getOptionValue("Divine Storm Units") and (not talent.crusade or cd.crusade > gcd * 5 or not isChecked("Crusade") or not useCDs()) then
+                    if judgmentVar and holyPower >= 3 and ((mode.rotation == 1 and #enemies.yards8 >= getOptionValue("Divine Storm Units")) or mode.rotation == 2) and (not talent.crusade or cd.crusade > gcd * 5 or not isChecked("Crusade") or not useCDs()) then
                         if cast.divineStorm() then return end
                     end
             -- Templar's Verdict
                     -- templars_verdict,if=debuff.judgment.up&holy_power>=3&(!talent.crusade.enabled|cooldown.crusade.remain()s>gcd*5)
-                    if judgmentVar and holyPower >= 3 and (not talent.crusade or cd.crusade > gcd * 5 or not isChecked("Crusade") or not useCDs()) then
+                    if judgmentVar and holyPower >= 3 and ((mode.rotation == 1 and #enemies.yards8 < getOptionValue("Divine Storm Units")) or mode.rotation == 3) and (not talent.crusade or cd.crusade > gcd * 5 or not isChecked("Crusade") or not useCDs()) then
                         if cast.templarsVerdict() then return end
                     end
                 end -- End SimC APL
