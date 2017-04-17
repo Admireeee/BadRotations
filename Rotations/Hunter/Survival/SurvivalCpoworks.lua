@@ -161,7 +161,7 @@ local function runRotation()
         local cd                                            = br.player.cd
         local charges                                       = br.player.charges
         local deadMouse                                     = UnitIsDeadOrGhost("mouseover")
-        local deadtar, attacktar, hastar, playertar         = deadtar or UnitIsDeadOrGhost("target"), attacktar or UnitCanAttack("target", "player"), hastar or ObjectExists("target"), UnitIsPlayer("target")
+        local deadtar, attacktar, hastar, playertar         = deadtar or UnitIsDeadOrGhost("target"), attacktar or UnitCanAttack("target", "player"), hastar or GetObjectExists("target"), UnitIsPlayer("target")
         local debuff, debuffcount                           = br.player.debuff, br.player.debuffcount
         local enemies                                       = enemies or {}
         local falling, swimming, flying, moving             = getFallTime(), IsSwimming(), IsFlying(), GetUnitSpeed("player")>0
@@ -169,7 +169,7 @@ local function runRotation()
         local flaskBuff                                     = getBuffRemain("player",br.player.flask.wod.buff.agilityBig)
         local friendly                                      = friendly or UnitIsFriend("target", "player")
         local gcd                                           = br.player.gcd
-        local hasMouse                                      = ObjectExists("mouseover")
+        local hasMouse                                      = GetObjectExists("mouseover")
         local healPot                                       = getHealthPot()
         local inCombat                                      = br.player.inCombat
         local inInstance                                    = br.player.instance=="party"
@@ -216,27 +216,28 @@ local function runRotation()
     -- Action List - Pet Management
         local function actionList_PetManagement()
             if not IsMounted() then
-                if isChecked("Auto Summon") and not UnitExists("pet") and (UnitIsDead("pet") ~= nil or UnitIsDead("pet") == false) then
+                if isChecked("Auto Summon") and not GetUnitExists("pet") and (UnitIsDeadOrGhost("pet") ~= nil or IsPetActive() == false) then
                   if waitForPetToAppear ~= nil and waitForPetToAppear < GetTime() - 2 then
-                    if lastFailedWhistle and lastFailedWhistle > GetTime() - 3 then
-                      if castSpell("player",RevivePet) then return; end
-                    else
-                      local Autocall = getValue("Auto Summon");
+                      if deadPet == true then
+                        if castSpell("player",982) then return; end
+                      elseif deadPet == false then
+                        local Autocall = getValue("Auto Summon");
 
-                      if Autocall == 1 then
-                        if castSpell("player",883) then return; end
-                      elseif Autocall == 2 then
-                        if castSpell("player",83242) then return; end
-                      elseif Autocall == 3 then
-                        if castSpell("player",83243) then return; end
-                      elseif Autocall == 4 then
-                        if castSpell("player",83244) then return; end
-                      elseif Autocall == 5 then
-                        if castSpell("player",83245) then return; end
-                      else
-                        Print("Auto Call Pet Error")
+                        if Autocall == 1 then
+                          if castSpell("player",883) then return; end
+                        elseif Autocall == 2 then
+                          if castSpell("player",83242) then return; end
+                        elseif Autocall == 3 then
+                          if castSpell("player",83243) then return; end
+                        elseif Autocall == 4 then
+                          if castSpell("player",83244) then return; end
+                        elseif Autocall == 5 then
+                          if castSpell("player",83245) then return; end
+                        else
+                          Print("Auto Call Pet Error")
+                        end
                       end
-                    end
+
                   end
                   if waitForPetToAppear == nil then
                     waitForPetToAppear = GetTime()
@@ -247,12 +248,14 @@ local function runRotation()
             if isChecked("Auto Summon") and UnitIsDeadOrGhost("pet") then
               if castSpell("player",982) then return; end
             end
+
             -- Mend Pet
             if isChecked("Mend Pet") and getHP("pet") < getValue("Mend Pet") and not UnitBuffID("pet",136) then
               if castSpell("pet",136) then return; end
             end
+
             -- Pet Attack / retreat
-            if inCombat and UnitAffectingCombat("target") and isValidUnit("target") and getDistance("target") < 40 then
+            if inCombat and isValidUnit(units.dyn40) and getDistance(units.dyn40) < 40 then
                 if not UnitIsUnit("target","pettarget") then
                     PetAttack()
                 end
@@ -266,7 +269,7 @@ local function runRotation()
         local function actionList_Extras()
         -- Dummy Test
             if isChecked("DPS Testing") then
-                if ObjectExists("target") then
+                if GetObjectExists("target") then
                     if getCombatTime() >= (tonumber(getOptionValue("DPS Testing"))*60) and isDummy() then
                         StopAttack()
                         ClearTarget()
@@ -774,7 +777,7 @@ local function runRotation()
     ------------------
     --- Pre-Combat ---
     ------------------
-            if not inCombat and ObjectExists("target") and not UnitIsDeadOrGhost("target") and UnitCanAttack("target", "player") then
+            if not inCombat and GetObjectExists("target") and not UnitIsDeadOrGhost("target") and UnitCanAttack("target", "player") then
                 if actionList_PreCombat() then return end
             end -- End Out of Combat Rotation
 -----------------------------

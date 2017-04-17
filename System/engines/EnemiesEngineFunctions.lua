@@ -135,3 +135,27 @@ function castDispelOffensiveBuffs(spell)
 		end
 	end
 end
+-- Cone Logic for Enemies
+function getEnemiesInCone(length,angle)
+    local playerX, playerY, playerZ = GetObjectPosition("player")
+    local facing = ObjectFacing("player")
+    local units = 0
+    local enemiesTable = getEnemies("player",length)
+
+    for i = 1, #enemiesTable do
+        local thisUnit = enemiesTable[i]
+        if not UnitIsUnit(thisUnit,"player") and (isDummy(thisUnit) or UnitIsEnemy(thisUnit,"player")) then
+            local unitX, unitY, unitZ = GetObjectPosition(thisUnit)
+            if playerX and unitX then
+                local angleToUnit = getAngles(playerX,playerY,playerZ,unitX,unitY,unitZ)
+                local angleDifference = facing > angleToUnit and facing - angleToUnit or angleToUnit - facing
+                local shortestAngle = angleDifference < math.pi and angleDifference or math.pi*2 - angleDifference
+                local finalAngle = shortestAngle/math.pi*180
+                if finalAngle < angle then
+                    units = units + 1
+                end
+            end
+        end
+    end
+    return units
+end

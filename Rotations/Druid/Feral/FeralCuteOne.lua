@@ -163,7 +163,7 @@ end
 --- ROTATION ---
 ----------------
 local function runRotation()
-    if br.timer:useTimer("debugFeral", math.random(0.15,0.3)) then
+    -- if br.timer:useTimer("debugFeral", math.random(0.15,0.3)) then
         --Print("Running: "..rotationName)
 
 ---------------
@@ -194,14 +194,14 @@ local function runRotation()
         local cd                                            = br.player.cd
         local charges                                       = br.player.charges
         local deadMouse                                     = UnitIsDeadOrGhost("mouseover")
-        local deadtar, attacktar, hastar, playertar         = deadtar or UnitIsDeadOrGhost("target"), attacktar or UnitCanAttack("target", "player"), hastar or ObjectExists("target"), UnitIsPlayer("target")
+        local deadtar, attacktar, hastar, playertar         = deadtar or UnitIsDeadOrGhost("target"), attacktar or UnitCanAttack("target", "player"), hastar or GetObjectExists("target"), UnitIsPlayer("target")
         local debuff                                        = br.player.debuff
         local enemies                                       = enemies or {}
         local falling, swimming, flying, moving             = getFallTime(), IsSwimming(), IsFlying(), GetUnitSpeed("player")>0
         local flaskBuff                                     = getBuffRemain("player",br.player.flask.wod.buff.agilityBig)
         local friendly                                      = friendly or UnitIsFriend("target", "player")
         local gcd                                           = br.player.gcd
-        local hasMouse                                      = ObjectExists("mouseover")
+        local hasMouse                                      = GetObjectExists("mouseover")
         local healPot                                       = getHealthPot()
         local inCombat                                      = br.player.inCombat
         local inInstance                                    = br.player.instance=="party"
@@ -228,6 +228,7 @@ local function runRotation()
         local stealth                                       = br.player.stealth
         local t18_2pc                                       = TierScan("T18")>=2 --br.player.eq.t18_2pc
         local t18_4pc                                       = TierScan("T18")>=4 --br.player.eq.t18_4pc
+        local t19_4pc                                       = TierScan("T19")>=4
         local talent                                        = br.player.talent
         local travel, flight, cat, noform                   = br.player.buff.travelForm.exists(), br.player.buff.flightForm.exists(), br.player.buff.catForm.exists(), GetShapeshiftForm()==0
         local trinketProc                                   = false
@@ -283,8 +284,9 @@ local function runRotation()
         else
             fbMaxEnergy = false
         end
-        if not inCombat and not ObjectExists("target") then
+        if not inCombat and not GetObjectExists("target") then
 			shredCount = 7
+            OPN1 = false
             RK1 = false
             SR1 = false
             BER1 = false
@@ -295,7 +297,7 @@ local function runRotation()
             RIP1 = false
             opener = false
         end
-        -- ChatOverlay(round2(getDistance("target","player","dist"),2)..", "..round2(getDistance("target","player","dist2"),2)..", "..round2(getDistance("target","player","dist3"),2)..", "..round2(getDistance("target","player","dist4"),2))
+        -- ChatOverlay(round2(getDistance("target","player","dist"),2)..", "..round2(getDistance("target","player","dist2"),2)..", "..round2(getDistance("target","player","dist3"),2)..", "..round2(getDistance("target","player","dist4"),2)..", "..round2(getDistance("target"),2))
 
 --------------------
 --- Action Lists ---
@@ -378,7 +380,7 @@ local function runRotation()
 			end -- End Death Cat Mode
 		-- Dummy Test
 			if isChecked("DPS Testing") then
-				if ObjectExists("target") then
+				if GetObjectExists("target") then
 					if getCombatTime() >= (tonumber(getOptionValue("DPS Testing"))*60) and isDummy() then
 						StopAttack()
 						ClearTarget()
@@ -390,7 +392,7 @@ local function runRotation()
 		end -- End Action List - Extras
 	-- Action List - Defensive
 		local function actionList_Defensive()
-			if useDefensive() and not stealth and not flight and not buff.prowl.exists() then
+			if useDefensive() and not IsMounted() and not stealth and not flight and not buff.prowl.exists() then
 		--Revive/Rebirth
 				if isChecked("Rebirth") then
 					if buff.predatorySwiftness.exists() then
@@ -610,10 +612,12 @@ local function runRotation()
             end
 		-- Start Attack
             -- auto_attack
-            if isValidUnit("target") and getDistance("target") < 5 then
-            	if isChecked("Opener") and isBoss("target") and opener == false then
-					if not RK1 and power >= 35 then
-						Print("Starting Opener")
+            if isChecked("Opener") and isBoss("target") and opener == false then
+                if isValidUnit("target") and getDistance("target") < 5 then
+					if not OPN1 then 
+                        Print("Starting Opener")
+                        OPN1 = true
+                    elseif (not RK1 or not debuff.rake.exists("target")) and power >= 35 then
             -- Rake
        					if castOpener("rake","RK1",1) then return end
        				elseif RK1 and not SR1 and power >= 40 then
@@ -641,7 +645,7 @@ local function runRotation()
 			  		elseif AF1 and not MF1 then
             -- Moonfire
                         if talent.moonfire then
-			    			if castOpener("moonfire","VAN1",6) then return end
+			    			if castOpener("moonfire","MF1",6) then return end
 						else
 							Print("6: Moonfire (Uncastable)");
 							MF1 = true
@@ -651,15 +655,15 @@ local function runRotation()
 						if castOpener("shred","SHR1",shredCount) then shredCount = shredCount + 1 return end
                     elseif SHR1 and not RIP1 and power >= 30 then
        		-- Rip
-       					if castOpener("rip","RIP1",shredCount) then return end
+     					if castOpener("rip","RIP1",shredCount) then return end
                     elseif RIP1 then
        					opener = true;
 						Print("Opener Complete")
        					return
        				end
-				else
-					opener = true
-				end
+                end
+			elseif (UnitExists("target") and not isBoss("target")) or not isChecked("Opener") then
+				opener = true
 			end
         end -- End Action List - Opener
     -- Action List - SBTOpener
@@ -742,7 +746,7 @@ local function runRotation()
         -- Savage Roar
             -- savage_roar,if=((buff.savage_roar.remains<=10.5&talent.jagged_wounds.enabled)|(buff.savage_roar.remains<=7.2))&combo_points=5&(energy.time_to_max<1|buff.berserk.up|buff.incarnation.up|buff.elunes_guidance.up|cooldown.tigers_fury.remains<3|set_bonus.tier18_4pc|(buff.clearcasting.react&energy>65)|talent.soul_of_the_forest.enabled|!dot.rip.ticking|(dot.rake.remains<1.5&spell_targets.swipe_cat<6))
             if ((buff.savageRoar.remain() <= 10.5 and talent.jaggedWounds) or buff.savageRoar.remain() <= 7.2)
-                and combo == 5 and (ttm < 1 or buff.berserk.exists() or buff.incarnationKingOfTheJungle.exists()
+                and (combo == 5 or not buff.savageRoar.exists()) and (ttm < 1 or buff.berserk.exists() or buff.incarnationKingOfTheJungle.exists()
                 or buff.elunesGuidance.exists() or cd.tigersFury < 3 or t18_4pc or (buff.clearcasting.exists() and power < 65)
                 or talent.soulOfTheForest or not debuff.rake.exists(units.dyn5) or (debuff.rake.remain(units.dyn5) < 1.5 and #enemies.yards8 < 6))
             then
@@ -870,8 +874,8 @@ local function runRotation()
             end
         -- Thrash
             -- pool_resource,for_next=1
-            -- thrash_cat,cycle_targets=1,if=remains<=duration*0.3&(spell_targets.swipe_cat>=2|(buff.clearcasting.up&buff.bloodtalons.down))
-            if ((mode.rotation == 1 and (#enemies.yards8 >= 2 or (buff.clearcasting.exists() and not buff.bloodtalons.exists()))) or mode.rotation == 2) then
+            -- thrash_cat,cycle_targets=1,if=remains<=duration*0.3&(spell_targets.swipe_cat>=2|(buff.clearcasting.up&buff.bloodtalons.down&set_bonus.tier19_4pc))
+            if ((mode.rotation == 1 and (#enemies.yards8 >= 2 or (buff.clearcasting.exists() and not buff.bloodtalons.exists() and t19_4pc))) or mode.rotation == 2) then
                 for i = 1, #enemies.yards8 do
                     local thisUnit = enemies.yards8[i]
                     if (multidot or (UnitIsUnit(thisUnit,units.dyn5) and not multidot)) and getDistance(thisUnit) < 5 then
@@ -899,7 +903,7 @@ local function runRotation()
             end
         -- Shred
             -- shred,if=combo_points<5&(spell_targets.swipe_cat<3|talent.brutal_slash.enabled)
-            if combo < 5 and debuff.rake.exists(units.dyn5) and (((mode.rotation == 1 and #enemies.yards8 < 3) or mode.rotation == 3) or talent.brutalSlash or level < 32) then
+            if combo < 5 and (debuff.rake.exists(units.dyn5) or level < 12) and (((mode.rotation == 1 and #enemies.yards8 < 3) or mode.rotation == 3) or talent.brutalSlash or level < 32) then
                 if cast.shred(units.dyn5) then return end
             end
         end
@@ -961,7 +965,7 @@ local function runRotation()
         -- Rake/Shred
                 -- buff.prowl.up|buff.shadowmeld.up
                 if isValidUnit("target") and (not isBoss("target") or not isChecked("Opener")) then
-                    if level < 6 then
+                    if level < 12 then
                         if cast.shred() then return end
                     else
                        if cast.rake() then return end
@@ -1012,12 +1016,12 @@ local function runRotation()
         -- Rake/Shred from Stealth
                 -- rake,if=buff.prowl.up|buff.shadowmeld.up
                 if (buff.prowl.exists() or buff.shadowmeld.exists()) and opener == true then
-                    if debuff.rake.exists(units.dyn5) or level < 6 then
+                    if debuff.rake.exists(units.dyn5) or level < 12 then
                         if cast.shred(units.dyn5) then return end
                     else
                        if cast.rake(units.dyn5) then return end
                     end
-                elseif not stealth and opener == true then
+                elseif not (buff.prowl.exists() or buff.shadowmeld.exists()) and opener == true then
                     -- auto_attack
                     if getDistance("target") < 5 then
                         StartAttack()
@@ -1163,7 +1167,7 @@ local function runRotation()
 			    end -- End No Stealth | Rotation Off Check
 			end --End In Combat
 		end --End Rotation Logic
-    end -- End Timer
+    -- end -- End Timer
 end -- End runRotation
 local id = 103
 if br.rotations[id] == nil then br.rotations[id] = {} end

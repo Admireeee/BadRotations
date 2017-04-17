@@ -1,7 +1,7 @@
 --- Character Class
 -- All classes inherit from the base class /cCharacter.lua
-
 cCharacter = {}
+
 
 -- Creates new character with given class
 function cCharacter:new(class)
@@ -364,7 +364,7 @@ function cCharacter:new(class)
 
 -- Casts the racial
 	function self.castRacial()
-		if self.cd.racial == 0 and self.options.useRacial then
+		if getSpellCD(self.racial) == 0 and self.options.useRacial then
 			if self.race == "Pandaren" or self.race == "Goblin" then
 				return castSpell("target",self.racial,true,false) == true
 			else
@@ -389,6 +389,7 @@ function cCharacter:new(class)
         br.ui:createCheckbox(section_base, "Use Crystal")
         br.ui:createDropdown(section_base, "Use emp. Rune", {"|cff00FF00Normal","|cffFF0000Raid Only"}, 1, "Use rune anytime or only in raids")
         br.ui:createCheckbox(section_base, "Use Racial")
+    	slsettings = br.ui:createCheckbox(section_base, "Save/Load Settings", "IN BETA")
         br.ui:checkSectionState(section_base)
     end
 
@@ -397,7 +398,8 @@ function cCharacter:new(class)
 		self.ignoreCombat             = isChecked("Ignore Combat")==true or false
 		self.options.useCrystal       = isChecked("Use Crystal")==true or false
 		self.options.useEmpoweredRune = isChecked("Use emp. Rune",true)==true or false
-		self.options.useRacial        = isSelected("Use Racial")==true or false
+		self.options.useRacial        = isChecked("Use Racial")
+		self.options.settings 		  = isChecked("Save/Load Settings")==true or false
 	end
 
 -- Use Oralius Crystal +100 to all Stat - ID: 118922, Buff: 176151 (Whispers of Insanity)

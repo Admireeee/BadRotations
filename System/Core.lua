@@ -1,4 +1,6 @@
 local brMainThread = nil
+deadPet = false
+
 
 function br:Engine()
 	-- Hidden Frame
@@ -17,25 +19,75 @@ end
 --[[---------  ----  -----  -------------  ----------  ----  --------  -------------------------------------------------------------------------------------------------]]
 --[[---------  -----  ----           ---  ------------  ---            -------------------------------------------------------------------------------------------------------------------]]
 --[[-------------------------------------------------------------------------------------------------------------------------------------------------------]]
+local elapsedTime = 0
+function EnemyEngine(_, time)
+	elapsedTime = elapsedTime + time
+	local updateRate = getOptionValue("Update Rate") or 0.5
+	if FireHack ~= nil and br.data.settings[br.selectedSpec].toggles["Power"] == 1 and elapsedTime >= updateRate then --0.5 then
+		elapsedTime = 0
+		-- Enemies Engine
+		-- EnemiesEngine();
+		FindEnemy()
+
+	end
+end
+
 local frame = CreateFrame("FRAME")
+frame:SetScript("OnUpdate", EnemyEngine)
+
+-- local elapsedTime2 = 0
+-- function PlayerUpdate(_, time)
+-- 	elapsedTime2 = elapsedTime + time
+-- 	if FireHack ~= nil and br.data.settings[br.selectedSpec].toggles["Power"] == 1 and elapsedTime2 >= getOptionValue("Player Update Rate") then
+-- 		elapsedTime2 = 0
+-- 	-- Load Spec Profiles
+-- 	    br.selectedProfile = br.data.settings[br.selectedSpec]["Rotation".."Drop"] or 1
+-- 		local playerSpec = GetSpecializationInfo(GetSpecialization())
+
+-- 		if br.player == nil or br.player.profile ~= br.selectedSpec then
+-- 	        br.player = br.loader:new(playerSpec,br.selectedSpec)
+-- 	        setmetatable(br.player, {__index = br.loader})
+-- 	        br.player:createOptions()
+-- 	        br.player:createToggles()
+-- 	        br.player:update()
+-- 	    end
+-- 	    -- Update Player
+-- 		if br.player ~= nil then
+-- 			br.player:update()
+-- 		end
+-- 	end
+-- end
+
+-- local playerUpdate = CreateFrame("Frame")
+-- playerUpdate:SetScript("OnUpdate", PlayerUpdate)
+
+
 frame:RegisterEvent("ADDON_LOADED");
 frame:RegisterEvent("PLAYER_LOGOUT")
 frame:RegisterUnitEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterUnitEvent("PLAYER_EQUIPMENT_CHANGED")
 frame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED")
+frame:RegisterUnitEvent("UNIT_SPELLCAST_SENT")
+frame:RegisterUnitEvent("UI_ERROR_MESSAGE")
 function frame:OnEvent(event, arg1, arg2, arg3, arg4, arg5)
 	if event == "ADDON_LOADED" and arg1 == "BadRotations" then
 		-- Load Settings
 		br.data = brdata
+		br.dungeon = dungeondata
+		br.raid = raiddata
 	end
     if event == "PLAYER_LOGOUT" then
         br.ui:saveWindowPosition()
         if getOptionCheck("Reset Options") then
         	-- Reset Settings
         	brdata = {}
+        	dungeondata = {}
+        	raiddata = {}
         else
         	-- Save Settings
         	brdata = br.data
+        	dungeondata = br.dungeon
+        	raiddata = br.raid
         end
     end
     if event == "PLAYER_ENTERING_WORLD" then
@@ -70,6 +122,23 @@ function frame:OnEvent(event, arg1, arg2, arg3, arg4, arg5)
             end
         end
     end
+    -- Blizz CastSpellByName bug bypass
+    if event == "UNIT_SPELLCAST_SENT" then
+    	local unitID, spell, rank, target, lineID = arg1, arg2, arg3, arg4, arg5
+    	if unitID == "player" and spell == "Metamorphosis" then
+    		CastSpellByID(191427,"player")
+    	end
+    end
+	if event == "UI_ERROR_MESSAGE" then
+		local arg1 = arg1
+		if arg1 == 275 then
+			if deadPet == false then
+				deadPet = true
+			elseif deadPet == true then
+				deadPet = false
+			end
+		end
+	end
 end
 frame:SetScript("OnEvent", frame.OnEvent)
 
@@ -88,7 +157,7 @@ function BadRotationsUpdate(self)
 			self.lastUpdateTime = tempTime
 		end
 		if getOptionValue("Update Rate") == nil then updateRate = 0.1 else updateRate = getOptionValue("Update Rate") end
-		if self.lastUpdateTime and (tempTime - self.lastUpdateTime) > updateRate then --0.1 then 
+		if self.lastUpdateTime and (tempTime - self.lastUpdateTime) > updateRate then --0.1 then
 			self.lastUpdateTime = tempTime
 			-- Check for Unlocker
 			if FireHack == nil then
@@ -105,18 +174,27 @@ function BadRotationsUpdate(self)
 					br.ui:closeWindow("all")
 					return false
 				else
-
+				-- Blizz CastSpellByName bug bypass
+					if castID then
+						-- Print("Casting by ID")
+						CastSpellByID(botSpell,botUnit)
+						castID = false
+					end
 				-- Load Spec Profiles
 				    br.selectedProfile = br.data.settings[br.selectedSpec]["Rotation".."Drop"] or 1
 					local playerSpec = GetSpecializationInfo(GetSpecialization())
 
 					if br.player == nil or br.player.profile ~= br.selectedSpec then
-			            br.player = br.loader:new(playerSpec,br.selectedSpec)
-			            setmetatable(br.player, {__index = br.loader})
-			            br.player:createOptions()
-			            br.player:createToggles()
-			            br.player:update()
-			        end
+				        br.player = br.loader:new(playerSpec,br.selectedSpec)
+				        setmetatable(br.player, {__index = br.loader})
+				        br.player:createOptions()
+				        br.player:createToggles()
+				        br.player:update()
+				    end
+				    -- Update Player
+					if br.player ~= nil then
+						br.player:update()
+					end
 
 				-- Close windows and swap br.selectedSpec on Spec Change
 					if select(2,GetSpecializationInfo(GetSpecialization())) ~= br.selectedSpec then
@@ -153,7 +231,7 @@ function BadRotationsUpdate(self)
 					if isChecked("Healer Line of Sight Indicator") then
 						inLoSHealer()
 					end
-					
+
 			    -- get DBM Timer/Bars
 				    -- global -> br.DBM.Timer
 				    br.DBM:getBars()
@@ -165,8 +243,8 @@ function BadRotationsUpdate(self)
 					ProfessionHelper()
 
 			    -- Rotation Log
-			    	if not br.ui.window['debug']['parent'] then 
-			    		br.ui:createDebugWindow() 
+			    	if not br.ui.window['debug']['parent'] then
+			    		br.ui:createDebugWindow()
 			    		br.ui:closeWindow("debug")
 			    	end
 				    if getOptionCheck("Rotation Log") then
@@ -179,29 +257,29 @@ function BadRotationsUpdate(self)
 				    	br.ui:closeWindow("debug")
 				    end
 
-	    -- FPS Intensive Functions
-				-- Enemies Engine
-					EnemiesEngine();
+				    if isChecked("Save/Load Settings") then
+				    	br.ui:createSettingsWindow()
+				    end
 
+	    -- FPS Intensive Functions
 				-- Healing Engine
 					if isChecked("HE Active") then
 						br.friend:Update()
 					end
 
-				-- Update Player
-			        if br.player ~= nil then
-						br.player:update()
-					end
+				-- Enemies Engine
+					EnemiesEngine();
+
 				end --End Update Check
 				self.updateInProgress = false
 			end -- End Update In Progress Check
 		end -- End Main Button Active Check
-	end	-- End FireHack Check			
+	end	-- End FireHack Check
 	br.debug.cpu.pulse.totalIterations = br.debug.cpu.pulse.totalIterations + 1
 	br.debug.cpu.pulse.currentTime = debugprofilestop()-startTime
 	br.debug.cpu.pulse.elapsedTime = br.debug.cpu.pulse.elapsedTime + debugprofilestop()-startTime
 	br.debug.cpu.pulse.averageTime = br.debug.cpu.pulse.elapsedTime / br.debug.cpu.pulse.totalIterations
-end -- Enf Bad Rotations Update Function
+end -- End Bad Rotations Update Function
 function ThreadHelper()
 	if not brMainThread or coroutine.status(brMainThread) == "dead" then
         brMainThread = coroutine.create(BadRotationsUpdate)
@@ -209,6 +287,14 @@ function ThreadHelper()
     coroutine.resume(brMainThread)
 	-- BadRotationsUpdate()
 end
+
+-- Enemies Engine
+-- EnemiesEngine();
+
+-- -- Update Player
+-- if br.player ~= nil then
+-- 	br.player:update()
+-- end
 --[[-------------------------------------------------------------------------------------------------------------------------------------------------------]]
 
 --[[-------------------------------------------------------------------------------------------------------------------------------------------------------]]

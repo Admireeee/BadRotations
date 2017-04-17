@@ -3,8 +3,8 @@
 function getFocusedTank()
 	local tanks = getTanksTable()
 	-- if we are targetting a mob and its targetting a tank we want to define which tank it is.
-	if #tanks > 0 and UnitExists("target") and UnitIsVisible("target") and UnitExists("targettarget")
-		and UnitIsVisible("targettarget") then
+	if #tanks > 0 and GetUnitExists("target") and GetUnitIsVisible("target") and GetUnitExists("targettarget")
+		and GetUnitIsVisible("targettarget") then
 		local targetTargetGUID = UnitGUID("targettarget")
 		for i = 1,#tanks do
 			if tanks[i].guid == targetTargetGUID then
@@ -43,7 +43,7 @@ function castWiseAoEHeal(unitTable,spell,radius,health,minCount,maxCount,facingC
 		-- find best candidate with list of units
 		for i = 1, #unitTable do
 			-- added a visible check as its not in healing engine.
-			if UnitIsVisible(unitTable[i].unit) and not (facingCheck ~= true and not getFacing("player",unitTable[i].unit)) then
+			if GetUnitIsVisible(unitTable[i].unit) and not (facingCheck ~= true and not getFacing("player",unitTable[i].unit)) then
 				local candidate = getUnitsToHealAround(unitTable[i].unit,radius,health,maxCount,facingCheck)
 				if bestCandidate == nil or bestCandidate[0].coef > candidate[0].coef then
 					bestCandidate = candidate
@@ -273,20 +273,20 @@ function getUnitsInCone(length,angle,hp)
 
     for i = 1, #br.friend do
         local thisUnit = br.friend[i].unit
-        if not UnitIsUnit(thisUnit,"player") and ((isDummy(thisUnit) and UnitIsFriend(thisUnit,"player"))) then
-            local unitX, unitY, unitZ = GetObjectPosition(thisUnit)
-            if playerX and unitX then
-                local angleToUnit = getAngles(playerX,playerY,playerZ,unitX,unitY,unitZ)
-                local angleDifference = facing > angleToUnit and facing - angleToUnit or angleToUnit - facing
-                local shortestAngle = angleDifference < math.pi and angleDifference or math.pi*2 - angleDifference
-                local finalAngle = shortestAngle/math.pi*180
-                --print("Final")
-                --print(finalAngle)
-                if finalAngle < angle then
-                    table.insert(units, thisUnit)
-                end
-            end
-        end
+				if thisUnit.hp <= hp then
+	        if not UnitIsUnit(thisUnit,"player") and (isDummy(thisUnit) or UnitIsFriend(thisUnit,"player")) then
+	            local unitX, unitY, unitZ = GetObjectPosition(thisUnit)
+	            if playerX and unitX then
+	                local angleToUnit = getAngles(playerX,playerY,playerZ,unitX,unitY,unitZ)
+	                local angleDifference = facing > angleToUnit and facing - angleToUnit or angleToUnit - facing
+	                local shortestAngle = angleDifference < math.pi and angleDifference or math.pi*2 - angleDifference
+	                local finalAngle = shortestAngle/math.pi*180
+	                if finalAngle < angle then
+	                    table.insert(units, thisUnit)
+	                end
+	            end
+	        end
+				end
     end
     return units
 end

@@ -98,6 +98,9 @@ local function createOptions()
             br.ui:createSpinner(section, "Vampiric Blood",  40,  0,  100,  5,  "|cffFFBB00Health Percentage to use at.");
         -- Icebound Fortitude
             br.ui:createSpinner(section, "Icebound Fortitude",  50,  0,  100,  5,  "|cffFFBB00Health Percentage to use at.")
+        -- Raise Ally
+            br.ui:createCheckbox(section,"Raise Ally")
+            br.ui:createDropdownWithout(section, "Raise Ally - Target", {"|cff00FF00Target","|cffFF0000Mouseover"}, 1, "|cffFFFFFFTarget to cast on")
         br.ui:checkSectionState(section)
     -- Interrupt Options
         section = br.ui:createSection(br.ui.window.profile, "Interrupts")
@@ -157,7 +160,7 @@ local function runRotation()
         local cd                                            = br.player.cd
         local charges                                       = br.player.charges
         local deadMouse                                     = UnitIsDeadOrGhost("mouseover")
-        local deadtar, attacktar, hastar, playertar         = deadtar or UnitIsDeadOrGhost("target"), attacktar or UnitCanAttack("target", "player"), hastar or ObjectExists("target"), UnitIsPlayer("target")
+        local deadtar, attacktar, hastar, playertar         = deadtar or UnitIsDeadOrGhost("target"), attacktar or UnitCanAttack("target", "player"), hastar or GetObjectExists("target"), UnitIsPlayer("target")
         local debuff                                        = br.player.debuff
         local enemies                                       = enemies or {}
         local falling, swimming, flying, moving             = getFallTime(), IsSwimming(), IsFlying(), GetUnitSpeed("player")>0
@@ -165,7 +168,7 @@ local function runRotation()
         local flaskBuff                                     = getBuffRemain("player",br.player.flask.wod.buff.staminaBig)
         local friendly                                      = friendly or UnitIsFriend("target", "player")
         local gcd                                           = br.player.gcd
-        local hasMouse                                      = ObjectExists("mouseover")
+        local hasMouse                                      = GetObjectExists("mouseover")
         local healPot                                       = getHealthPot()
         local inCombat                                      = br.player.inCombat
         local inInstance                                    = br.player.instance=="party"
@@ -211,7 +214,7 @@ local function runRotation()
         local function actionList_Extras()
         -- Dummy Test
             if isChecked("DPS Testing") then
-                if ObjectExists("target") then
+                if GetObjectExists("target") then
                     if getCombatTime() >= (tonumber(getOptionValue("DPS Testing"))*60) and isDummy() then
                         StopAttack()
                         ClearTarget()
@@ -262,6 +265,19 @@ local function runRotation()
         -- Vampiric Blood
                 if isChecked("Vampiric Blood") and php <= getOptionValue("Vampiric Blood") then
                     if cast.vampiricBlood() then return end
+                end
+        -- Raise Ally
+                if isChecked("Raise Ally") then
+                    if getOptionValue("Raise Ally - Target")==1
+                        and UnitIsPlayer("target") and UnitIsDeadOrGhost("target") and UnitIsFriend("target","player")
+                    then
+                        if cast.raiseAlly("target","dead") then return end
+                    end
+                    if getOptionValue("Raise Ally - Target")==2
+                        and UnitIsPlayer("mouseover") and UnitIsDeadOrGhost("mouseover") and UnitIsFriend("mouseover","player")
+                    then
+                        if cast.raiseAlly("mouseover","dead") then return end
+                    end
                 end
             end
         end -- End Action List - Defensive
@@ -512,7 +528,7 @@ local function runRotation()
                         if cast.bloodTap() then return end
                     end
                     if getOptionValue("Artifact") == 1 or (getOptionValue("Artifact") == 2 and useCDs()) and isChecked("Consumption VB") then
-                        if getFacing("player","target",105) == true and buff.vampiricBlood.exists() and php < getOptionValue("Consumption VB") and getDistance(thisUnit) <= 5 then
+                        if buff.vampiricBlood.exists() and php < getOptionValue("Consumption VB") and getEnemiesInCone(5,105) >= 1 then
                             if cast.consumption() then return end
                         end
                     end
@@ -527,7 +543,7 @@ local function runRotation()
                         if cast.heartStrike() then return end
                     end
                     if getOptionValue("Artifact") == 1 or (getOptionValue("Artifact") == 2 and useCDs()) then
-                        if getFacing("player","target",105) == true and getDistance(thisUnit) <= 5 then
+                        if getEnemiesInCone(5,105) >= 1 then
                             if cast.consumption() then return end
                         end
                     end

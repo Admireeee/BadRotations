@@ -2,8 +2,8 @@
 ## Title: |cffa330c9BadRotations
 ## Notes: |cffa330c9By CuteOne.
 ## Author: CuteOne
-## Version: 2.0
-## SavedVariablesPerCharacter: brdata
+## Version: 1.6.4
+## SavedVariablesPerCharacter: brdata, dungeondata, raiddata
 
 BadRotations.lua
 bindings.xml
@@ -79,6 +79,7 @@ System\UI\Windows\Debug.lua
 System\UI\Windows\Healing.lua
 System\UI\Windows\Help.lua
 System\UI\Windows\Profile.lua
+System\UI\Windows\Settings.lua
 
 ## Custom Functions
 
@@ -93,6 +94,7 @@ Rotations\idList.lua
 ## DeathKnight ---------------------------------------------------
 
 Rotations\Death Knight\Frost\FrostCuteOne.lua
+Rotations\Death Knight\Frost\THFrost.lua
 
 Rotations\Death Knight\Blood\BloodCuteOne.lua
 
@@ -125,7 +127,7 @@ Rotations\Hunter\Marksmanship\MarksmanshipCpoworks.lua
 Rotations\Hunter\Survival\SurvivalCpoworks.lua
 ## Mage ---------------------------------------------------
 
-Rotations\Mage\Arcane\ArcaneDBT.lua
+Rotations\Mage\Arcane\ArcaneCuteOne.lua
 
 Rotations\Mage\Fire\FireCuteOne.lua
 
@@ -190,6 +192,7 @@ Rotations\Warlock\Destruction\DestructionCuteOne.lua
 Rotations\Warrior\Arms\ArmsCuteOne.lua
 
 Rotations\Warrior\Fury\FuryCuteOne.lua
+Rotations\Warrior\Fury\FuryImmy.lua
 
 Rotations\Warrior\Protection\ProtectionCuteOne.lua
 

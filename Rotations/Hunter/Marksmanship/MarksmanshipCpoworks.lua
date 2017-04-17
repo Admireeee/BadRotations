@@ -31,6 +31,18 @@ local function createToggles()
         [2] = { mode = "Off", value = 2 , overlay = "Interrupts Disabled", tip = "No Interrupts will be used.", highlight = 0, icon = br.player.spell.counterShot }
     };
     CreateButton("Interrupt",4,0)
+-- Explosive Shot Button
+    ExplosiveModes = {
+        [1] = { mode = "On", value = 1 , overlay = "Explosive Shot Enabled", tip = "Will use Explosive Shot.", highlight = 1, icon = br.player.spell.explosiveShot },
+        [2] = { mode = "Off", value = 2 , overlay = "Explosive Shot Disabled", tip = "Explosive Shot will not be used.", highlight = 0, icon = br.player.spell.explosiveShot }
+    };
+    CreateButton("Explosive",5,0)
+-- Piercing Shot Button
+    PiercingModes = {
+        [1] = { mode = "On", value = 1 , overlay = "Piercing Shot Enabled", tip = "Will use Piercing Shot.", highlight = 1, icon = br.player.spell.piercingShot },
+        [2] = { mode = "Off", value = 2 , overlay = "Piercing Shot Disabled", tip = "Piercing Shot will not be used.", highlight = 0, icon = br.player.spell.piercingShot }
+    };
+    CreateButton("Piercing",6,0)
 end
 
 ---------------
@@ -47,6 +59,11 @@ local function createOptions()
             br.ui:createDropdownWithout(section, "APL Mode", {"|cffFFFFFFSimC","|cffFFFFFFAMR"}, 2, "|cffFFFFFFSet APL Mode to use.")
         -- Dummy DPS Test
             br.ui:createSpinner(section, "DPS Testing",  5,  5,  60,  5,  "|cffFFFFFFSet to desired time for test in minuts. Min: 5 / Max: 60 / Interval: 5")
+        -- Explosive Shot
+            -- br.ui:createCheckbox(section, "Explosive Shot")
+        -- Piercing Shot
+            -- br.ui:createCheckbox(section, "Piercing Shot")
+            br.ui:createSpinnerWithout(section, "Piercing Shot Units", 3, 1, 5, 1, "|cffFFFFFFSet to desired units to cast Piercing Shot")
         br.ui:checkSectionState(section)
     -- Pet Options
         section = br.ui:createSection(br.ui.window.profile, "Pet")
@@ -54,8 +71,6 @@ local function createOptions()
             br.ui:createDropdown(section, "Auto Summon", {"Pet 1","Pet 2","Pet 3","Pet 4","Pet 5",}, 1, "Select the pet you want to use")
         -- Mend Pet
             br.ui:createSpinner(section, "Mend Pet",  50,  0,  100,  5,  "|cffFFFFFFHealth Percent to Cast At")
-        -- Explosive Shot
-            br.ui:createCheckbox(section, "Explosive Shot")
         br.ui:checkSectionState(section)
     -- Cooldown Options
         section = br.ui:createSection(br.ui.window.profile, "Cooldowns")
@@ -100,6 +115,10 @@ local function createOptions()
             br.ui:createDropdown(section, "Defensive Mode", br.dropOptions.Toggle,  6)
         -- Interrupts Key Toggle
             br.ui:createDropdown(section, "Interrupt Mode", br.dropOptions.Toggle,  6)
+        -- Explosive Shot Key Toggle
+            br.ui:createDropdown(section, "Explosive Shot Mode", br.dropOptions.Toggle,  6)
+        -- Piercing Shot Key Toggle
+            br.ui:createDropdown(section, "Piercing Shot Mode", br.dropOptions.Toggle,  6)
         -- Pause Toggle
             br.ui:createDropdown(section, "Pause Mode", br.dropOptions.Toggle,  6)
         br.ui:checkSectionState(section)
@@ -125,6 +144,10 @@ local function runRotation()
         UpdateToggle("Cooldown",0.25)
         UpdateToggle("Defensive",0.25)
         UpdateToggle("Interrupt",0.25)
+        UpdateToggle("Explosive",0.25)
+        br.player.mode.explosive = br.data.settings[br.selectedSpec].toggles["Explosive"]
+        UpdateToggle("Piercing",0.25)
+        br.player.mode.piercing = br.data.settings[br.selectedSpec].toggles["Piercing"]
 
 --------------
 --- Locals ---
@@ -140,7 +163,7 @@ local function runRotation()
         local cd                                            = br.player.cd
         local charges                                       = br.player.charges
         local deadMouse                                     = UnitIsDeadOrGhost("mouseover")
-        local deadtar, attacktar, hastar, playertar         = deadtar or UnitIsDeadOrGhost("target"), attacktar or UnitCanAttack("target", "player"), hastar or ObjectExists("target"), UnitIsPlayer("target")
+        local deadtar, attacktar, hastar, playertar         = deadtar or UnitIsDeadOrGhost("target"), attacktar or UnitCanAttack("target", "player"), hastar or GetObjectExists("target"), UnitIsPlayer("target")
         local debuff, debuffcount                           = br.player.debuff, br.player.debuffcount
         local enemies                                       = enemies or {}
         local explosiveTarget                               = explosiveTarget
@@ -149,7 +172,7 @@ local function runRotation()
         local flaskBuff                                     = getBuffRemain("player",br.player.flask.wod.buff.agilityBig)
         local friendly                                      = friendly or UnitIsFriend("target", "player")
         local gcd                                           = br.player.gcd
-        local hasMouse                                      = ObjectExists("mouseover")
+        local hasMouse                                      = GetObjectExists("mouseover")
         local healPot                                       = getHealthPot()
         local inCombat                                      = br.player.inCombat
         local inInstance                                    = br.player.instance=="party"
@@ -177,27 +200,31 @@ local function runRotation()
         local ttm                                           = br.player.power.ttm
         local units                                         = units or {}
 
+        units.dyn38 = br.player.units(38)
         units.dyn40 = br.player.units(40)
         enemies.yards8t = br.player.enemies(8,br.player.units(8,true))
         enemies.yards40 = br.player.enemies(40)
+        enemies.yards40r = getEnemiesInRect(10,38,false) or 0
 
         if leftCombat == nil then leftCombat = GetTime() end
         if profileStop == nil then profileStop = false end
 
-        local lowestVuln = lowestVuln or 100
-        for i=1,#getEnemies("player", 40) do
-            local thisUnit = getEnemies("player", 40)[i]
-            if debuff.vulnerable.remain(thisUnit) < lowestVuln then
+        local lowestVuln
+        for i=1,#enemies.yards40 do
+            local thisUnit = enemies.yards40[i]
+            if lowestVuln == nil then lowestVuln = 100 end
+            if debuff.vulnerable.remain(thisUnit) < lowestVuln and debuff.vulnerable.remain(thisUnit) > 0 then
                 lowestVuln = debuff.vulnerable.remain(thisUnit)
             end
         end
+        if lowestVuln == nil or lowestVuln == 100 then lowestVuln = 0 end
 
         local attackHaste = 1 / (1 + (UnitSpellHaste("player")/100))
 
         -- Pool for Piercing Shot
         -- pooling_for_piercing,value=talent.piercing_shot.enabled&cooldown.piercing_shot.remains<5&lowest_vuln_within.5>0&lowest_vuln_within.5>cooldown.piercing_shot.remains&(buff.trueshot.down|spell_targets=1)
         local poolForPiercing
-        if talent.piercingShot and cd.piercingShot < 5 and lowestVuln > 0 and lowestVuln > cd.piercingShot and (not buff.trueshot.exists() or ((mode.rotation == 1 and #enemies.yards40 == 1) or mode.rotation == 3)) then
+        if mode.piercing == 1 and talent.piercingShot and cd.piercingShot < 5 and lowestVuln > 0 and lowestVuln > cd.piercingShot and (not buff.trueshot.exists() or enemies.yards40r >= getOptionValue("Piercing Shot Units")) then
             poolForPiercing = true
         else
             poolForPiercing = false
@@ -259,73 +286,93 @@ local function runRotation()
         end
 
         local function getExplosiveDistance(otherUnit)
-            -- local objectCount = GetObjectCount() or 0
-            if otherUnit == nil then otherUnit = "target" end
+            -- Find Explosive Shot Object
+            local explosiveObject = nil
+            if ObjectExists("target") and otherUnit == nil then otherUnit = "target" end
+            if not ObjectExists(otherUnit) then otherUnit = nil end
             for i = 1, ObjectCount() do
                 local thisUnit = GetObjectWithIndex(i)
-                if ObjectExists(otherUnit) and GetObjectID(thisUnit) == 11492 then --and UnitIsUnit("player",UnitCreator(thisUnit)) then
-
-                    return GetDistanceBetweenObjects(thisUnit,otherUnit)
+                if GetObjectID(thisUnit) == 11492 then
+                    explosiveObject = thisUnit
+                    -- Print("Used Explosive!")
+                    local x1, y1 = ObjectPosition(thisUnit)
+                    -- Print("Explosive at X: "..x1..", Y: "..y1)
+                    -- print(tostring(ObjectName(thisUnit)))
+                    break
                 end
             end
-            return 40
+            -- Return Distances
+            if ObjectExists(explosiveObject) and ObjectExists(otherUnit) then
+                return GetDistanceBetweenObjects(explosiveObject,otherUnit)
+            -- elseif ObjectExists("target") then
+            --     return GetDistanceBetweenObjects("target","player")
+            else 
+                return 99
+            end
         end
-        if explosiveTarget == nil or not ObjectExists(explosiveTarget) then explosiveTarget = "target" end
-        if ObjectExists(explosiveTarget) and getExplosiveDistance(explosiveTarget) < 5 then
-            if castSpell(explosiveTarget,spell.explosiveShotDetonate,false,false,false,true,false,true,true,false) then return end
+
+        -- Explosions Gotta Have More Explosions!
+        if getExplosiveDistance(explosiveTarget) < 5 then
+            -- Print("Explode NOW!")
+            -- if castSpell(explosiveTarget,spell.explosiveShotDetonate,true,false,false,true,false,true,true,false) then Print("EXPLOSIONS!") return end
+            CastSpellByName(GetSpellInfo(spell.explosiveShotDetonate))
         end
+        if getExplosiveDistance(explosiveTarget) < 99 then
+            -- Print("Explosive Distance: "..getExplosiveDistance(explosiveTarget))
+        end
+
 --------------------
 --- Action Lists ---
 --------------------
     -- Action List - Pet Management
         local function actionList_PetManagement()
-            if not talent.loneWolf and not IsMounted() then
-                if isChecked("Auto Summon") and not UnitExists("pet") and (UnitIsDead("pet") ~= nil or UnitIsDead("pet") == false) then
+            if not IsMounted() and not talent.loneWolf then
+                if isChecked("Auto Summon") and not GetUnitExists("pet") and (UnitIsDeadOrGhost("pet") ~= nil or IsPetActive() == false) then
                   if waitForPetToAppear ~= nil and waitForPetToAppear < GetTime() - 2 then
-                    if lastFailedWhistle and lastFailedWhistle > GetTime() - 3 then
-                      if castSpell("player",RevivePet) then return; end
-                    else
-                      local Autocall = getValue("Auto Summon");
+                      if deadPet == true then
+                        if castSpell("player",982) then return; end
+                      elseif deadPet == false then
+                        local Autocall = getValue("Auto Summon");
 
-                      if Autocall == 1 then
-                        if castSpell("player",883) then return; end
-                      elseif Autocall == 2 then
-                        if castSpell("player",83242) then return; end
-                      elseif Autocall == 3 then
-                        if castSpell("player",83243) then return; end
-                      elseif Autocall == 4 then
-                        if castSpell("player",83244) then return; end
-                      elseif Autocall == 5 then
-                        if castSpell("player",83245) then return; end
-                      else
-                        print("Auto Call Pet Error")
+                        if Autocall == 1 then
+                          if castSpell("player",883) then return; end
+                        elseif Autocall == 2 then
+                          if castSpell("player",83242) then return; end
+                        elseif Autocall == 3 then
+                          if castSpell("player",83243) then return; end
+                        elseif Autocall == 4 then
+                          if castSpell("player",83244) then return; end
+                        elseif Autocall == 5 then
+                          if castSpell("player",83245) then return; end
+                        else
+                          Print("Auto Call Pet Error")
+                        end
                       end
-                    end
+
                   end
                   if waitForPetToAppear == nil then
                     waitForPetToAppear = GetTime()
                   end
                 end
+            end
+            --Revive
+            if isChecked("Auto Summon") and UnitIsDeadOrGhost("pet") then
+              if castSpell("player",982) then return; end
+            end
 
-                -- Revive Pet
-                if isChecked("Auto Summon") and UnitIsDeadOrGhost("pet") then
-                  if castSpell("player",982) then return; end
+            -- Mend Pet
+            if isChecked("Mend Pet") and getHP("pet") < getValue("Mend Pet") and not UnitBuffID("pet",136) then
+              if castSpell("pet",136) then return; end
+            end
+
+            -- Pet Attack / retreat
+            if inCombat and isValidUnit(units.dyn40) and getDistance(units.dyn40) < 40 then
+                if not UnitIsUnit("target","pettarget") then
+                    PetAttack()
                 end
-
-                -- Mend Pet
-                if isChecked("Mend Pet") and getHP("pet") < getValue("Mend Pet") and not UnitBuffID("pet",136) then
-                  if castSpell("pet",136) then return; end
-                end
-
-                -- Pet Attack / retreat
-                if inCombat and isValidUnit(units.dyn40) and getDistance(units.dyn40) < 40 then
-                    if not UnitIsUnit("target","pettarget") then
-                        PetAttack()
-                    end
-                else
-                    if IsPetAttackActive() then
-                        PetStopAttack()
-                    end
+            else
+                if IsPetAttackActive() then
+                    PetStopAttack()
                 end
             end
         end
@@ -333,7 +380,7 @@ local function runRotation()
         local function actionList_Extras()
         -- Dummy Test
             if isChecked("DPS Testing") then
-                if ObjectExists("target") then
+                if GetObjectExists("target") then
                     if getCombatTime() >= (tonumber(getOptionValue("DPS Testing"))*60) and isDummy() then
                         StopAttack()
                         ClearTarget()
@@ -446,11 +493,13 @@ local function runRotation()
             end
         -- Explosive Shot
             -- explosive_shot
-            if cast.explosiveShot(units.dyn40) then explosiveTarget = units.dyn40; return end
+            if mode.explosive == 1 then
+                if cast.explosiveShot(units.dyn40) then explosiveTarget = units.dyn40; return end
+            end
         -- Piercing Shot
             -- piercing_shot,if=lowest_vuln_within.5>0&focus>100
-            if lowestVuln > 0 and power > 100 then
-                if cast.piercingShot() then return end
+            if mode.piercing == 1 and lowestVuln > 0 and power > 100 and enemies.yards40r >= getOptionValue("Piercing Shot Units") then
+                if cast.piercingShot(units.dyn38) then return end
             end
         -- Aimed Shot
             -- aimed_shot,if=spell_targets>1&debuff.vulnerability.remains>cast_time&talent.trick_shot.enabled&buff.sentinels_sight.stack=20
@@ -460,11 +509,18 @@ local function runRotation()
         -- Marked Shot
             -- marked_shot,if=spell_targets>1
             if debuff.huntersMark.count() > 1 then
-                if cast.markedShot() then return end
+                for i = 1, #enemies.yards40 do
+                    local thisUnit = enemies.yards40[i]
+                    if debuff.huntersMark.exists(thisUnit) then
+                        if cast.markedShot(thisUnit) then return end
+                    end
+                end
             end
         -- Multi-Shot
             -- Multi-Shot,if=spell_targets>1&(buff.marking_targets.up|buff.trueshot.up)
-            if ((mode.rotation == 1 and #enemies.yards8t > 1) or mode.rotation == 2) and (buff.markingTargets.exists() or buff.trueshot.exists()) then
+            if ((mode.rotation == 1 and (#enemies.yards8t > 2 or (debuff.huntersMark.exists(units.dyn40) and #enemies.yards8t > 1))) or mode.rotation == 2) 
+                and (buff.markingTargets.exists() or buff.trueshot.exists()) 
+            then
                 if cast.multiShot() then return end
             end
         -- Sentinel
@@ -491,7 +547,12 @@ local function runRotation()
         -- Marked Shot
             -- marked_shot,if=buff.marking_targets.up|buff.trueshot.up
             if buff.markingTargets.exists() or buff.trueshot.exists() then
-                if cast.markedShot() then return end
+                for i = 1, #enemies.yards40 do
+                    local thisUnit = enemies.yards40[i]
+                    if debuff.huntersMark.exists(thisUnit) then
+                        if cast.markedShot(thisUnit) then return end
+                    end
+                end
             end
         -- Sidewinders
             -- !variable.waiting_for_sentinel&(debuff.hunters_mark.down|(buff.trueshot.down&buff.marking_targets.down))&((buff.marking_targets.up|buff.trueshot.up)|charges_fractional>1.8)&(focus.deficit>cast_regen)
@@ -513,21 +574,29 @@ local function runRotation()
             end
         -- Marked Shot
             -- marked_shot
-            if cast.markedShot() then return end
+            for i = 1, #enemies.yards40 do
+                local thisUnit = enemies.yards40[i]
+                if debuff.huntersMark.exists(thisUnit) then
+                    if cast.markedShot(thisUnit) then return end
+                end
+            end
         -- Aimed Shot
             -- aimed_shot,if=talent.sidewinders.enabled&spell_targets.multi_shot=1&focus>110
-            if talent.sidewinders and ((mode.rotation == 1 and #enemies.yards8t == 1) or mode.rotation == 3) and power > 110 then
+            -- if talent.sidewinders and ((mode.rotation == 1 and #enemies.yards8t == 1) or mode.rotation == 3) and power > 110 then
+            --     if cast.aimedShot() then return end
+            -- end
+            if power > 95 and ((talent.piercingShot and not poolForPiercing) or not talent.piercingShot) then
                 if cast.aimedShot() then return end
             end
         -- Multi-Shot
             -- Multi-Shot,if=spell_targets.multi_shot>1&!variable.waiting_for_sentinel
-            if ((mode.rotation == 1 and #enemies.yards8t > 1) or mode.rotation == 2) and not waitForSentinel then
+            if ((mode.rotation == 1 and (#enemies.yards8t > 2 or (debuff.huntersMark.exists(units.dyn40) and #enemies.yards8t > 1))) or mode.rotation == 2) and not waitForSentinel then
                 if cast.multiShot() then return end
             end
         -- Arcane Shot
             -- arcane_shot,if=spell_targets.multi_shot<2&!variable.waiting_for_sentinel
-            if ((mode.rotation == 1 and #enemies.yards8t < 2) or mode.rotation == 3) and not waitForSentinel then
-                if cast.multiShot() then return end
+            if ((mode.rotation == 1 and #enemies.yards8t < 3) or mode.rotation == 3) and not waitForSentinel then
+                if cast.arcaneShot() then return end
             end
         end -- End Action List - Non Patient Sniper
     -- Action List - Patient Sniper
@@ -538,14 +607,14 @@ local function runRotation()
             end
         -- Piercing Shot
             -- piercing_shot,if=cooldown.piercing_shot.up&spell_targets=1&lowest_vuln_within.5>0&lowest_vuln_within.5<1
-            if cd.piercingShot == 0 and ((mode.rotation == 1 and #enemies.yards40 == 1) or mode.rotation == 3) and lowestVuln > 0 and lowestVuln < 1 then
-                if cast.piercingShot() then return end
+            if mode.piercing == 1 and cd.piercingShot == 0 and enemies.yards40r >= getOptionValue("Piercing Shot Units") and lowestVuln > 0 and lowestVuln < 1 then
+                if cast.piercingShot(units.dyn38) then return end
             end
             -- piercing_shot,if=cooldown.piercing_shot.up&spell_targets>1&lowest_vuln_within.5>0&((!buff.trueshot.up&focus>80&(lowest_vuln_within.5<1|debuff.hunters_mark.up))|(buff.trueshot.up&focus>105&lowest_vuln_within.5<6))
-            if cd.piercingShot == 0 and ((mode.rotation == 1 and #enemies.yards40 == 1) or mode.rotation == 3) and lowestVuln > 0 
+            if mode.piercing == 1 and cd.piercingShot == 0 and enemies.yards40r >= getOptionValue("Piercing Shot Units") and lowestVuln > 0 
                 and ((not buff.trueshot.exists() and power > 80 and (lowestVuln < 1 or debuff.huntersMark.exists(units.dyn40))) or (buff.trueshot.exists() and power > 105 and lowestVuln < 6)) 
             then
-                if cast.piercingShot() then return end
+                if cast.piercingShot(units.dyn38) then return end
             end
         -- Aimed Shot
             -- aimed_shot,if=spell_targets>1&debuff.vulnerability.remains>cast_time&talent.trick_shot.enabled&buff.sentinels_sight.stack=20
@@ -559,7 +628,7 @@ local function runRotation()
             end
         -- Multi-Shot
             -- Multi-Shot,if=spell_targets>1&(buff.marking_targets.up|buff.trueshot.up)
-            if ((mode.rotation == 1 and #enemies.yards8t > 1) or mode.rotation == 2) and (buff.markingTargets.exists() or buff.trueshot.exists()) then
+            if ((mode.rotation == 1 and (#enemies.yards8t > 2 or (debuff.huntersMark.exists(units.dyn40) and #enemies.yards8t > 1))) or mode.rotation == 2) and (buff.markingTargets.exists() or buff.trueshot.exists()) then
                 if cast.multiShot() then return end
             end
         -- Windburst
@@ -596,7 +665,7 @@ local function runRotation()
             end
         -- Multi-Shot
             -- Multi-Shot,if=spell_targets>1&variable.can_gcd&focus+cast_regen+20<focus.max&(!variable.pooling_for_piercing|lowest_vuln_within.5>gcd.max)
-            if ((mode.rotation == 1 and #enemies.yards8t > 1) or mode.rotation == 2) and canGCD and power + powerRegen + 20 < powerMax and (not poolForPiercing or lowestVuln > gcd) then
+            if ((mode.rotation == 1 and (#enemies.yards8t > 2 or (debuff.huntersMark.exists(units.dyn40) and #enemies.yards8t > 1))) or mode.rotation == 2) and canGCD and power + powerRegen + 20 < powerMax and (not poolForPiercing or lowestVuln > gcd) then
                 if cast.multiShot() then return end
             end
         -- Arcane Shot
@@ -646,7 +715,7 @@ local function runRotation()
             end
         -- Multi-Shot
             -- Multi-Shot,if=spell_targets>1&(!variable.pooling_for_piercing|lowest_vuln_within.5>gcd.max)
-            if ((mode.rotation == 1 and #enemies.yards8t > 1) or mode.rotation == 2) and (not poolForPiercing or lowestVuln > gcd) then
+            if ((mode.rotation == 1 and (#enemies.yards8t > 2 or (debuff.huntersMark.exists(units.dyn40) and #enemies.yards8t > 1))) or mode.rotation == 2) and (not poolForPiercing or lowestVuln > gcd) then
                 if cast.multiShot() then return end
             end            
         end -- End Action List - Patient Sniper
@@ -654,12 +723,14 @@ local function runRotation()
         local function actionList_TargetDie()
         -- Piercing Shot
             -- piercing_shot,if=debuff.vulnerability.up
-            if debuff.vulnerable.exists(units.dyn40) then
-                if cast.piercingShot() then return end
+            if mode.piercing == 1 and debuff.vulnerable.exists(units.dyn40) and enemies.yards40r >= getOptionValue("Piercing Shot Units") then
+                if cast.piercingShot(units.dyn38) then return end
             end
         -- Explosive Shot
             -- explosive_shot
-            if cast.explosiveShot() then explosiveTarget = units.dyn40; return end
+            if mode.explosive == 1 then
+                if cast.explosiveShot() then explosiveTarget = units.dyn40; return end
+            end
         -- Windburst
             -- windburst
             if cast.windburst() then return end
@@ -697,7 +768,7 @@ local function runRotation()
             -- Piercing Shot
             -- if not HasTalent(PatientSniper) and Power > 50
             if talent.piercingShot and not talent.patientSniper and power > 50 then
-                if cast.piercingShot(units.dyn40) then return end
+                if cast.piercingShot(units.dyn38) then return end
             end
             -- Windburst
             if cast.windburst(units.dyn40) and not debuff.vulnerable.exists(units.dyn40) then return end
@@ -740,7 +811,7 @@ local function runRotation()
                 if cast.blackArrow(units.dyn40) then return end
             end
             -- Explosive Shot
-            if isChecked("Explosive Shot") and talent.explosiveShot then
+            if mode.explosive == 1 and talent.explosiveShot then
                 if cast.explosiveShot(units.dyn40) then explosiveTarget = units.dyn40; return end
             end
             -- Aimed Shot
@@ -774,7 +845,7 @@ local function runRotation()
             -- if HasItem(MagnetizedBlastingCapLauncher)
 
             -- Explosive Shot
-            if isChecked("Explosive Shot") and talent.explosiveShot then
+            if mode.explosive == 1 and talent.explosiveShot then
                 if cast.explosiveShot(units.dyn40) then explosiveTarget = units.dyn40; return end
             end
             -- Multi-Shot

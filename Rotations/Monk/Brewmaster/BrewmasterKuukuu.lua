@@ -179,7 +179,7 @@ local function runRotation()
         local charges           = br.player.charges
         local combatTime        = getCombatTime()
         local debuff            = br.player.debuff
-        local deadtar, attacktar, hastar, playertar         = deadtar or UnitIsDeadOrGhost("target"), attacktar or UnitCanAttack("target", "player"), hastar or ObjectExists("target"), UnitIsPlayer("target")
+        local deadtar, attacktar, hastar, playertar         = deadtar or UnitIsDeadOrGhost("target"), attacktar or UnitCanAttack("target", "player"), hastar or GetObjectExists("target"), UnitIsPlayer("target")
         local enemies           = enemies or {}
         local flaskBuff         = getBuffRemain("player",br.player.flask.wod.buff.agilityBig) or 0
         local gcd               = br.player.gcd
@@ -223,7 +223,7 @@ local function runRotation()
 
         if opener == nil then opener = false end
 
-        if not inCombat and not ObjectExists("target") then
+        if not inCombat and not GetObjectExists("target") then
             iB1 = false
             KG = false
             iB2 = false
@@ -231,6 +231,7 @@ local function runRotation()
             bOB = false
             iB4 = false
             opener = false
+            openerStarted = false
         end
 
 --------------------
@@ -261,7 +262,7 @@ local function runRotation()
             end
         -- Dummy Test
             if isChecked("DPS Testing") then
-                if ObjectExists("target") then
+                if GetObjectExists("target") then
                     if combatTime >= (tonumber(getValue("DPS Testing"))*60) and isDummy() then
                         StopAttack()
                         ClearTarget()
@@ -295,6 +296,10 @@ local function runRotation()
                             if cast.purifyingBrew() then return end
                         end
                     end
+                end
+        --Expel Harm
+                if isChecked("Expel Harm") and php <= getValue("Expel Harm") and inCombat and GetSpellCount(115072) >= getOptionValue("Expel Harm Orbs") then
+                    if cast.expelHarm() then return end
                 end
         -- Pot/Stoned
                 if isChecked("Pot/Stoned") and getHP("player") <= getValue("Pot/Stoned") and inCombat then
@@ -351,7 +356,7 @@ local function runRotation()
                     if cast.fortifyingBrew() then return end
                 end
         --Expel Harm
-                if isChecked("Expel Harm") and php <= getValue("Expel Harm") and inCombat and GetSpellCount(115027) >= getOptionValue("Expel Harm Orbs") then
+                if isChecked("Expel Harm") and php <= getValue("Expel Harm") and inCombat and GetSpellCount(115072) >= getOptionValue("Expel Harm Orbs") then
                     if cast.expelHarm() then return end
                 end
             end -- End Defensive Check
@@ -409,6 +414,7 @@ local function runRotation()
     -- Action List - Opener
         function actionList_Opener()
             if opener == false then
+                openerStarted = true
                 --Ironskin Brew
                 if not iB1 == true then
                     if cast.ironskinBrew() then
@@ -459,21 +465,29 @@ local function runRotation()
         		if cast.breathOfFire() then return end
         	end]]        
         -- Breath of Fire
-            if buff.blackoutCombo.exists() and not hasEquiped(137016) and #getEnemies("player",12) >= getOptionValue("Breath of Fire Targets") then
+            if buff.blackoutCombo.exists() and not hasEquiped(137016) and #getEnemies("player",12) >= getOptionValue("Breath of Fire Targets") and debuff.kegSmash.exists(units.dyn5) then
                 if cast.breathOfFire() then return end
             end
         -- Breath of Fire (Legendary Chest)
-            if not buff.blackoutCombo.exists() and hasEquiped(137016) and #getEnemies("player",12) >= getOptionValue("Breath of Fire Targets") then
+            if not buff.blackoutCombo.exists() and hasEquiped(137016) and #getEnemies("player",12) >= getOptionValue("Breath of Fire Targets") and debuff.kegSmash.exists(units.dyn5) then
                 if cast.breathOfFire() then return end
             end
         -- Blackout Strike
             if cast.blackoutStrike() then return end
-        --Exploding Keg
+        -- Exploding Keg
             if getOptionValue("Artifact") == 1 or (getOptionValue("Artifact") == 2 and useCDs()) and #getEnemies("player",12) >= getOptionValue("Exploding Keg Targets") then
                 if cast.explodingKeg() then return end
             end
-        -- Tiger Palm
-            if (power + (powgen*cd.kegSmash)) >= 40 then
+        -- RJW AoE
+            if ((mode.rotation == 1 and #enemies.yards8 >= 3) or mode.rotation == 2) then
+                if cast.rushingJadeWind() then return end
+            end
+        -- TP AoE
+            if ((mode.rotation == 1 and #enemies.yards8 >= 3) or mode.rotation == 2) and cd.kegSmash >= gcd and (power+(powgen*cd.kegSmash)) >= 80 then
+                if cast.tigerPalm() then return end
+            end
+        -- Tiger Palm ST
+            if ((mode.rotation == 1 and #enemies.yards8 < 3) or mode.rotation == 3) and (power + (powgen*cd.kegSmash)) >= 40 then
                 if cast.tigerPalm() then return end
             end
         --Chi Burst
@@ -485,16 +499,16 @@ local function runRotation()
         	if talent.chiWave then
             	if cast.chiWave() then return end
             end
-        -- Rushing Jade Wind
-            if #enemies.yards8 >= 1 then
+        -- Rushing Jade Wind ST
+            if ((mode.rotation == 1 and #enemies.yards8 < 3) or mode.rotation == 3) and #enemies.yards8 >= 1 then
                 if cast.rushingJadeWind() then return end
             end
         -- Breath of Fire
-        	--[[if #getEnemies("player",12) >= getOptionValue("Breath of Fire Targets") then
+        	--[[if #getEnemies("player",12) >= getOptionValue("Breath of Fire Targets") and debuff.kegSmash.exists(units.dyn5) then
         		if cast.breathOfFire() then return end
         	end]]        
         -- Expel Harm
-            --[[if isChecked("Expel Harm") and php <= getValue("Expel Harm") and inCombat and GetSpellCount(115027) >= getOptionValue("Expel Harm Orbs") then
+            --[[if isChecked("Expel Harm") and php <= getValue("Expel Harm") and inCombat and GetSpellCount(115072) >= getOptionValue("Expel Harm Orbs") then
                 if cast.expelHarm() then return end
             end]]
         end
@@ -515,7 +529,7 @@ local function runRotation()
             end
         --Breath of Fire
             --actions.st+=/breath_of_fire
-            if #getEnemies("player",12) >= getOptionValue("Breath of Fire Targets") then
+            if #getEnemies("player",12) >= getOptionValue("Breath of Fire Targets") and debuff.kegSmash.exists(units.dyn5) then
             	if cast.breathOfFire() then return end
             end
         -- Blackout Strike
@@ -548,7 +562,7 @@ local function runRotation()
             	if cast.rushingJadeWind() then return end
             end
         -- Expel Harm
-            --[[if isChecked("Expel Harm") and php <= getValue("Expel Harm") and inCombat and GetSpellCount(115027) >= getOptionValue("Expel Harm Orbs") then
+            --[[if isChecked("Expel Harm") and php <= getValue("Expel Harm") and inCombat and GetSpellCount(115072) >= getOptionValue("Expel Harm Orbs") then
                 if cast.expelHarm() then return end
             end]]
         end -- End Action List - Single Target
@@ -582,7 +596,7 @@ local function runRotation()
             end
         --Breath of Fire
             --actions.st+=/breath_of_fire
-            if #getEnemies("player",12) >= getOptionValue("Breath of Fire Targets") then
+            if #getEnemies("player",12) >= getOptionValue("Breath of Fire Targets") and debuff.kegSmash.exists(units.dyn5) then
             	if cast.breathOfFire() then return end
             end
         --Rushing Jade Wind
@@ -629,7 +643,7 @@ local function runRotation()
     -- Profile Stop | Pause
         if not inCombat and not hastar and profileStop==true then
             profileStop = false
-        elseif (inCombat and profileStop==true) or pause() or (IsMounted() or IsFlying()) or mode.rotation==4 then
+        elseif (inCombat and profileStop==true) or pause() or (IsMounted() or IsFlying()) and getBuffRemain("player", 192002 ) < 10 or mode.rotation==4 then
             return true
         else
 -----------------------
@@ -648,9 +662,9 @@ local function runRotation()
 --- In Combat Rotation ---
 --------------------------
             if isChecked("Opener") then
-                if opener == false and hastar and isBoss("target") and getDistance("target") < 10 and charges.purifyingBrew == 3 then
+                if opener == false and hastar and isBoss("target") and getDistance("target") < 10 and (charges.purifyingBrew == 3 or openerStarted == true) then
                     if actionList_Opener() then return end
-                elseif opener == false and hastar and charges.purifyingBrew < 3 then
+                elseif opener == false and openerStarted == false and hastar and charges.purifyingBrew < 3 then
                     opener = true
                 elseif opener == false and hastar and not isBoss("target") then
                     opener = true
@@ -695,20 +709,24 @@ local function runRotation()
 		                if cast.blackoxBrew() then return end
 		            end
 		        -- Ironskin Brew
-		            if (charges.purifyingBrew > 1 and not buff.ironskinBrew.exists()) or charges.purifyingBrew == 3 and not buff.blackoutCombo.exists() then
+		            if ((charges.purifyingBrew > 1 and not buff.ironskinBrew.exists()) or charges.purifyingBrew == 3) and not buff.blackoutCombo.exists() then
 		                if cast.ironskinBrew() then return end
 		            end
+                -- Potion
                     if canUse(127844) and inRaid and isChecked("Potion") and getDistance("target") < 5 then
                         useItem(127844)
                     end
-                    if ((mode.rotation == 1 and #enemies.yards8 >= 3) or mode.rotation == 2) then
+                    --[[if ((mode.rotation == 1 and #enemies.yards8 >= 3) or mode.rotation == 2) then
                         if actionList_MultiTarget() then return end
-                    end  
+                    end]]  
+        -- Blackout Combo APL
                     if talent.blackoutCombo then
                         if actionList_BlackOutCombo() then return end
                     end                                      
-        -- Call Action List - Single Target
-                    -- call_action_list,name=st
+        -- Non-Blackout Combo APL
+                    if not talent.blackoutCombo and ((mode.rotation == 1 and #enemies.yards8 >= 3) or mode.rotation == 2) then
+                        if actionList_MultiTarget() then return end
+                    end
                     if not talent.blackoutCombo then
                         if actionList_SingleTarget() then return end
                     end

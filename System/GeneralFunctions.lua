@@ -1,9 +1,21 @@
 function GetObjectExists(Unit)
-    if FireHack then
-        return ObjectExists(Unit)
-    else
-        return UnitExists(Unit)
-    end
+	if Unit == nil then return false end
+	if FireHack then
+        if Unit == "target" or Unit == "targettarget" then
+            if not GetUnitExists(Unit) then return false end
+        end
+		return ObjectExists(Unit)
+	else
+		return false
+	end
+end
+function GetUnitExists(Unit)
+	if Unit == nil then return false end
+	return UnitExists(Unit)
+end
+function GetUnitIsVisible(Unit)
+	if Unit == nil then return false end
+	return UnitIsVisible(Unit)
 end
 function GetObjectFacing(Unit)
     if FireHack and GetObjectExists(Unit) then
@@ -280,7 +292,7 @@ end
 function canDisarm(Unit)
 	if DisarmedTarget == nil then DisarmedTarget = 0 end
 	if isDisarmed == true then
-		if UnitExists(Unit) and UnitGUID(Unit)~=DisarmedTarget then
+		if GetUnitExists(Unit) and UnitGUID(Unit)~=DisarmedTarget then
 			DisarmedTarget = UnitGUID(Unit)
 			return false
 		else
@@ -288,7 +300,7 @@ function canDisarm(Unit)
 			return true
 		end
 	end
-	if not isInCombat("player") or UnitExists(Unit) then
+	if not isInCombat("player") or GetUnitExists(Unit) then
 		if not isInCombat("player") or UnitGUID(Unit)~=DisarmedTarget then
 			isDisarmed = false
 			return true
@@ -407,7 +419,7 @@ function canDispel(Unit,spellID)
 end
 -- if canHeal("target") then
 function canHeal(Unit)
-	if UnitExists(Unit) and UnitInRange(Unit) == true and UnitCanCooperate("player",Unit)
+	if GetUnitExists(Unit) and UnitInRange(Unit) == true and UnitCanCooperate("player",Unit)
 		and not UnitIsEnemy("player",Unit) and not UnitIsCharmed(Unit) and not UnitIsDeadOrGhost(Unit)
 		and getLineOfSight(Unit) == true and not UnitDebuffID(Unit,33786) then
 		return true
@@ -423,7 +435,7 @@ function canInterrupt(unit,percentint)
 	local channelDelay = 0.4 -- Delay to mimick human reaction time for channeled spells
 	local interruptable = false
 	local castType = "spellcast" -- Handle difference in logic if the spell is cast or being channeles
-	if UnitExists(unit)
+	if GetUnitExists(unit)
 		and UnitCanAttack("player",unit)
 		and not UnitIsDeadOrGhost(unit)
 	then
@@ -501,7 +513,7 @@ function canRun()
 				or UnitBuffID("player",9265) ~= nil then -- Deep Sleep(SM)
 				return nil
 			else
-				if ObjectExists("target") then
+				if GetObjectExists("target") then
 					if GetObjectID("target") ~= 5687 then
 						return nil
 					end
@@ -593,7 +605,7 @@ end
 -- castGround("target",12345,40)
 function castGround(Unit,SpellID,maxDistance,minDistance)
 	if minDistance == nil then minDistance = 0 end
-	if UnitExists(Unit) and getSpellCD(SpellID) == 0 and getLineOfSight("player",Unit)
+	if GetUnitExists(Unit) and getSpellCD(SpellID) == 0 and getLineOfSight("player",Unit)
 		and getDistance("player",Unit) < maxDistance and getDistance("player",Unit) >= minDistance then
 		CastSpellByName(GetSpellInfo(SpellID))
 		local X,Y,Z = GetObjectPosition(Unit)
@@ -605,7 +617,7 @@ function castGround(Unit,SpellID,maxDistance,minDistance)
 end
 -- castGroundBetween("target",12345,40)
 function castGroundBetween(Unit,SpellID,maxDistance)
-	if UnitExists(Unit) and getSpellCD(SpellID) <= 0.4 and getLineOfSight("player",Unit) and getDistance("player",Unit) <= maxDistance then
+	if GetUnitExists(Unit) and getSpellCD(SpellID) <= 0.4 and getLineOfSight("player",Unit) and getDistance("player",Unit) <= maxDistance then
 		CastSpellByName(GetSpellInfo(SpellID))
 		local X,Y,Z = GetObjectPosition(Unit)
 		ClickPosition(X,Y,Z,true)
@@ -643,7 +655,7 @@ function castHealGround(SpellID,Radius,Health,NumberOfPlayers)
 		local lowHPTargets,foundTargets = { },{ }
 		for i = 1,#br.friend do
 			if getHP(br.friend[i].unit) <= Health then
-				if UnitIsVisible(br.friend[i].unit) and GetObjectExists(br.friend[i].unit) then
+				if GetUnitIsVisible(br.friend[i].unit) and GetObjectExists(br.friend[i].unit) then
 					local X,Y,Z = GetObjectPosition(br.friend[i].unit)
 					tinsert(lowHPTargets,{ unit = br.friend[i].unit,x = X,y = Y,z = Z })
 				end
@@ -732,7 +744,7 @@ function castSpell(Unit,SpellID,FacingCheck,MovementCheck,SpamAllowed,KnownSkip,
 		-- Table used to prevent refiring too quick
 		if timersTable == nil then timersTable = {}	end
 		-- default noCast to false
-		if noCast == nil then nocast = false end
+		if noCast == nil then noCast = false end
 		-- make sure it is a known spell
 		if not (KnownSkip == true or isKnown(SpellID)) then return false end
 		-- gather our spell range information
@@ -888,7 +900,7 @@ function castSpellMacro(Unit,SpellID,FacingCheck,MovementCheck,SpamAllowed,Known
 		-- Table used to prevent refiring too quick
 		if timersTable == nil then timersTable = {}	end
 		-- default noCast to false
-		if noCast == nil then nocast = false end
+		if noCast == nil then noCast = false end
 		-- make sure it is a known spell
 		if not (KnownSkip == true or isKnown(SpellID)) then return false end
 		-- gather our spell range information
@@ -952,14 +964,20 @@ function castSpellMacro(Unit,SpellID,FacingCheck,MovementCheck,SpamAllowed,Known
 	return false
 end
 -- Used in openers
-function castOpener(spellIndex,flag,index)
-    if (not br.player.cast.debug[spellIndex] and (br.player.cd[spellIndex] == 0 or br.player.cd[spellIndex] > br.player.gcd)) then
-        Print(index..": "..select(1,GetSpellInfo(br.player.spell[spellIndex])).." (Uncastable)");
-        _G[flag] = true;
-        return true
-    else
-        if br.player.cast[spellIndex]() then Print(index..": "..select(1,GetSpellInfo(br.player.spell[spellIndex]))); _G[flag] = true; return true end
-    end
+function castOpener(spellIndex,flag,index,checkdistance)
+	local spellCast = br.player.spell[spellIndex]
+	local maxRange = select(6,GetSpellInfo(spellCast))
+	if not maxRange or maxRange == 0 then maxRange = 5 end
+	if checkdistance == nil then checkdistance = true end
+	if getDistance("target") < maxRange or not checkdistance then
+	    if (not br.player.cast.debug[spellIndex] and (br.player.cd[spellIndex] == 0 or br.player.cd[spellIndex] > br.player.gcd)) then
+	        Print(index..": "..select(1,GetSpellInfo(spellCast)).." (Uncastable)");
+	        _G[flag] = true;
+	        return true
+	    else
+	        if br.player.cast[spellIndex]() then Print(index..": "..select(1,GetSpellInfo(spellCast))); _G[flag] = true; return true end
+	    end
+	end
 end
 function canCast(spellID,unit)
 	if unit == nil then unit = "target" end
@@ -981,7 +999,7 @@ function castMouseoverHealing(Class)
 		local dispelid = spellTable[Class].dispel
 		for i = 1,#SpecialTargets do
 			local target = SpecialTargets[i]
-			if UnitExists(target) and not UnitIsPlayer(target) then
+			if GetUnitExists(target) and not UnitIsPlayer(target) then
 				local npcID = tonumber(string.match(UnitGUID(target),"-(%d+)-%x+$"))
 				for i = 1,#npcTable do
 					if npcID == npcTable[i] then
@@ -1282,60 +1300,60 @@ function getDisease(range,aoe,mod)
     end
  end
 function getDistance(Unit1,Unit2,option)
-	-- If Unit2 is nil we compare player to Unit1
-	if Unit2 == nil then
-		Unit2 = Unit1
-		Unit1 = "player"
-	end
-	-- Modifier for Balance Affinity range change
-	if rangeMod == nil then rangeMod = 0 end
-	if br.player ~= nil then
-		if br.player.talent.balanceAffinity ~= nil then
-			if br.player.talent.balanceAffinity then
-				rangeMod = 5
-			else
-				rangeMod = 0
-			end
-		end
-	end
-	-- Check if objects exists and are visible
-	if GetObjectExists(Unit1) and UnitIsVisible(Unit1) == true
-		and GetObjectExists(Unit2) and UnitIsVisible(Unit2) == true
-	then
-	-- Get the distance
-		local X1,Y1,Z1 = GetObjectPosition(Unit1)
-		local X2,Y2,Z2 = GetObjectPosition(Unit2)
-		local TargetCombatReach = UnitCombatReach(Unit2)
-    	local PlayerCombatReach = UnitCombatReach(Unit1)
-		local MeleeCombatReachConstant = 4/3
-    	if isMoving(Unit1) and isMoving(Unit2) then
-			IfSourceAndTargetAreRunning = 8/3
-		else
-			IfSourceAndTargetAreRunning = 0
-    	end
-		local dist = math.sqrt(((X2-X1)^2) + ((Y2-Y1)^2) + ((Z2-Z1)^2)) - (PlayerCombatReach + TargetCombatReach) - rangeMod
-		local dist2 = dist + 0.03 * ((13 - dist) / 0.13)
-		local dist3 = dist + 0.05 * ((8 - dist) / 0.15) + 1
-		local dist4 = dist + (PlayerCombatReach + TargetCombatReach)
-    	local meleeRange = max(5, PlayerCombatReach + TargetCombatReach + MeleeCombatReachConstant + IfSourceAndTargetAreRunning)
-		if option == "dist" then return dist end
-		if option == "dist2" then return dist2 end
-		if option == "dist3" then return dist3 end
-		if option == "dist4" then return dist4 end
-		if dist > 13 then
-			return dist
-		elseif dist2 > 8 and dist3 > 8 then
-			return dist2
-		elseif dist3 > 5 and dist4 > 5 then
-			return dist3
-		elseif dist4 > meleeRange then -- Thanks Ssateneth
-			return dist4
-		else
-			return 0
-		end
-	else
-		return 100
-	end
+    local currentDist = 100
+    -- If Unit2 is nil we compare player to Unit1
+    if Unit2 == nil then
+        Unit2 = Unit1
+        Unit1 = "player"
+    end
+    -- Modifier for Balance Affinity range change
+    if rangeMod == nil then rangeMod = 0 end
+    if br.player ~= nil then
+        if br.player.talent.balanceAffinity ~= nil then
+            if br.player.talent.balanceAffinity then
+                rangeMod = 5
+            else
+                rangeMod = 0
+            end
+        end
+    end
+    -- Check if objects exists and are visible
+    if GetObjectExists(Unit1) and GetUnitIsVisible(Unit1) == true
+        and GetObjectExists(Unit2) and GetUnitIsVisible(Unit2) == true
+    then
+    -- Get the distance
+        local X1,Y1,Z1 = GetObjectPosition(Unit1)
+        local X2,Y2,Z2 = GetObjectPosition(Unit2)
+        local TargetCombatReach = UnitCombatReach(Unit2)
+        local PlayerCombatReach = UnitCombatReach(Unit1)
+        local MeleeCombatReachConstant = 4/3
+        if isMoving(Unit1) and isMoving(Unit2) then
+            IfSourceAndTargetAreRunning = 8/3
+        else
+            IfSourceAndTargetAreRunning = 0
+        end
+        local dist = math.sqrt(((X2-X1)^2) + ((Y2-Y1)^2) + ((Z2-Z1)^2)) - (PlayerCombatReach + TargetCombatReach) - rangeMod
+        local dist2 = dist + 0.03 * ((13 - dist) / 0.13)
+        local dist3 = dist + 0.05 * ((8 - dist) / 0.15) + 1
+        local dist4 = dist + (PlayerCombatReach + TargetCombatReach)
+        local meleeRange = max(5, PlayerCombatReach + TargetCombatReach + MeleeCombatReachConstant + IfSourceAndTargetAreRunning)
+        if option == "dist" then return dist end
+        if option == "dist2" then return dist2 end
+        if option == "dist3" then return dist3 end
+        if option == "dist4" then return dist4 end
+        if dist > 13 then
+            currentDist = dist
+        elseif dist2 > 8 and dist3 > 8 then
+            currentDist = dist2
+        elseif dist3 > 5 and dist4 > 5 then
+            currentDist = dist3
+        elseif dist4 > meleeRange then -- Thanks Ssateneth
+            currentDist = dist4
+        else
+            currentDist = 0
+        end
+    end
+    return currentDist
 end
 function isInRange(spellID,unit)
 	return LibStub("SpellRange-1.0").IsSpellInRange(spellID,unit)
@@ -1344,7 +1362,7 @@ function getDistanceToObject(Unit1,X2,Y2,Z2)
 	if Unit1 == nil then
 		Unit1 = "player"
 	end
-	if GetObjectExists(Unit1) and UnitIsVisible(Unit1) then
+	if GetObjectExists(Unit1) and GetUnitIsVisible(Unit1) then
 		local X1,Y1,Z1 = GetObjectPosition(Unit1)
 		return math.sqrt(((X2-X1)^2) + ((Y2-Y1)^2) + ((Z2-Z1)^2))
 	else
@@ -1392,7 +1410,7 @@ function getFacing(Unit1,Unit2,Degrees)
 	if Unit2 == nil then
 		Unit2 = "player"
 	end
-	if GetObjectExists(Unit1) and UnitIsVisible(Unit1) and GetObjectExists(Unit2) and UnitIsVisible(Unit2) then
+	if GetObjectExists(Unit1) and GetUnitIsVisible(Unit1) and GetObjectExists(Unit2) and GetUnitIsVisible(Unit2) then
 		local Angle1,Angle2,Angle3
 		local Angle1 = GetObjectFacing(Unit1)
 		local Angle2 = GetObjectFacing(Unit2)
@@ -1409,9 +1427,12 @@ function getFacing(Unit1,Unit2,Degrees)
 			end
 			if Angle2-Angle1 > 180 then
 				Angle3 = math.abs(Angle2-Angle1-360)
+			elseif Angle1-Angle2 > 180 then
+				Angle3 = math.abs(Angle1-Angle2-360)
 			else
 				Angle3 = math.abs(Angle2-Angle1)
 			end
+			-- return Angle3
 			if Angle3 < Degrees then
 				return true
 			else
@@ -1421,7 +1442,7 @@ function getFacing(Unit1,Unit2,Degrees)
 	end
 end
 function getFacingDistance()
-    if UnitIsVisible("player") and UnitIsVisible("target") then
+    if GetUnitIsVisible("player") and GetUnitIsVisible("target") then
         --local targetDistance = getRealDistance("target")
         local targetDistance = getDistance("target")
         local Y1,X1,Z1 = GetObjectPosition("player");
@@ -1464,7 +1485,7 @@ function getHP(Unit)
 		if UnitIsEnemy("player", Unit) then
 			return 100*UnitHealth(Unit)/UnitHealthMax(Unit)
 		else
-			if not UnitIsDeadOrGhost(Unit) and UnitIsVisible(Unit) then
+			if not UnitIsDeadOrGhost(Unit) and GetUnitIsVisible(Unit) then
 				for i = 1,#br.friend do
 					if br.friend[i].guidsh == string.sub(UnitGUID(Unit),-5) then
 						return br.friend[i].hp
@@ -1672,7 +1693,7 @@ function getTotemDistance(Unit1)
 		Unit1 = "player"
 	end
 
-	if UnitIsVisible(Unit1) then
+	if GetUnitIsVisible(Unit1) then
 		-- local objectCount = GetObjectCount() or 0
 		for i = 1, ObjectCount() do
 			if UnitIsUnit(UnitCreator(ObjectWithIndex(i)), "Player") and (UnitName(ObjectWithIndex(i)) == "Searing Totem" or UnitName(ObjectWithIndex(i)) == "Magma Totem") then
@@ -1692,7 +1713,7 @@ function getBossID(BossUnitID)
 	return GetObjectID(BossUnitID)
 end
 function getUnitID(Unit)
-	if GetObjectExists(Unit) and UnitIsVisible(Unit) then
+	if GetObjectExists(Unit) and GetUnitIsVisible(Unit) then
 		local id = select(6,strsplit("-", UnitGUID(Unit) or ""))
 		return tonumber(id)
 	end
@@ -1731,7 +1752,7 @@ function getLineOfSight(Unit1,Unit2)
 			return true
 		end
 	end
-	if GetObjectExists(Unit1) and UnitIsVisible(Unit1) and GetObjectExists(Unit2) and UnitIsVisible(Unit2) then
+	if GetObjectExists(Unit1) and GetUnitIsVisible(Unit1) and GetObjectExists(Unit2) and GetUnitIsVisible(Unit2) then
 		local X1,Y1,Z1 = GetObjectPosition(Unit1)
 		local X2,Y2,Z2 = GetObjectPosition(Unit2)
 		if TraceLine(X1,Y1,Z1 + 2,X2,Y2,Z2 + 2, 0x10) == nil then
@@ -1745,7 +1766,7 @@ function getLineOfSight(Unit1,Unit2)
 end
 -- if getGround("target"[,"target"]) then
 function getGround(Unit)
-	if GetObjectExists(Unit) and UnitIsVisible(Unit) then
+	if GetObjectExists(Unit) and GetUnitIsVisible(Unit) then
 		local X1,Y1,Z1 = GetObjectPosition(Unit)
 		if TraceLine(X1,Y1,Z1,X1,Y1,Z1-2, 0x10) == nil and TraceLine(X1,Y1,Z1,X1,Y1,Z1-2, 0x100) == nil then
 			return nil
@@ -1755,7 +1776,7 @@ function getGround(Unit)
 	end
 end
 function getGroundDistance(Unit)
-	if GetObjectExists(Unit) and UnitIsVisible(Unit) then
+	if GetObjectExists(Unit) and GetUnitIsVisible(Unit) then
 		local X1,Y1,Z1 = GetObjectPosition(Unit)
 		for i = 1,100 do
 			if TraceLine(X1,Y1,Z1,X1,Y1,Z1-i/10, 0x10) ~= nil or TraceLine(X1,Y1,Z1,X1,Y1,Z1-i/10, 0x100) ~= nil then
@@ -1766,7 +1787,7 @@ function getGroundDistance(Unit)
 end
 -- if getPetLineOfSight("target"[,"target"]) then
 function getPetLineOfSight(Unit)
-	if GetObjectExists(Unit) and UnitIsVisible("pet") and UnitIsVisible(Unit) then
+	if GetObjectExists(Unit) and GetUnitIsVisible("pet") and GetUnitIsVisible(Unit) then
 		local X1,Y1,Z1 = GetObjectPosition("pet")
 		local X2,Y2,Z2 = GetObjectPosition(Unit)
 		if TraceLine(X1,Y1,Z1 + 2,X2,Y2,Z2 + 2, 0x10) == nil then
@@ -1812,7 +1833,7 @@ function getTimeToDie(unit)
 	if timestart == nil then
 		timestart = 0
 	end
-	if GetObjectExists(unit) and UnitIsVisible(unit) and not UnitIsDeadOrGhost(unit) then
+	if GetObjectExists(unit) and GetUnitIsVisible(unit) and not UnitIsDeadOrGhost(unit) then
 		if currtar ~= UnitGUID(unit) then
 			priortar = currtar
 			currtar = UnitGUID(unit)
@@ -1834,7 +1855,7 @@ function getTimeToDie(unit)
 				end
 			end
 		end
-	elseif not GetObjectExists(unit) or not UnitIsVisible(unit) or currtar ~= UnitGUID(unit) then
+	elseif not GetObjectExists(unit) or not GetUnitIsVisible(unit) or currtar ~= UnitGUID(unit) then
 		currtar = 0
 		priortar = 0
 		thpstart = 0
@@ -1860,7 +1881,7 @@ function getTimeTo(unit,percent)
 	if ttptimestart == nil then
 		ttptimestart = 0
 	end
-	if GetObjectExists(unit) and UnitIsVisible(unit) and not UnitIsDeadOrGhost(unit) then
+	if GetObjectExists(unit) and GetUnitIsVisible(unit) and not UnitIsDeadOrGhost(unit) then
 		if ttpcurrtar ~= UnitGUID(unit) then
 			ttppriortar = currtar
 			ttpcurrtar = UnitGUID(unit)
@@ -1884,7 +1905,7 @@ function getTimeTo(unit,percent)
 				end
 			end
 		end
-	elseif not GetObjectExists(unit) or not UnitIsVisible(unit) or ttpcurrtar ~= UnitGUID(unit) then
+	elseif not GetObjectExists(unit) or not GetUnitIsVisible(unit) or ttpcurrtar ~= UnitGUID(unit) then
 		ttpcurrtar = 0
 		ttppriortar = 0
 		ttpthpstart = 0
@@ -2098,8 +2119,8 @@ function hasThreat(unit,playerUnit)
 	local unitThreat
 	local targetOfTarget
 	local targetFriend
-	if ObjectExists("targettarget") and ObjectExists(unit) then targetOfTarget = UnitTarget(unit) else targetOfTarget = "player" end
-	if ObjectExists("targettarget") then targetFriend = (UnitInParty(targetOfTarget) or UnitInRaid(targetOfTarget)) else targetFriend = false end
+	if GetObjectExists("targettarget") and GetObjectExists(unit) then targetOfTarget = UnitTarget(unit) else targetOfTarget = "player" end
+	if GetObjectExists("targettarget") then targetFriend = (UnitInParty(targetOfTarget) or UnitInRaid(targetOfTarget)) else targetFriend = false end
 	for i = 1, #br.friend do
 		local thisUnit = br.friend[i].unit
 		if UnitThreatSituation(unit, thisUnit)~=nil then
@@ -2147,7 +2168,7 @@ function isInstanceBoss(unit)
 				local bossList = select(1,GetInstanceLockTimeRemainingEncounter(i))
 				Print(bossList)
 			end
-			if ObjectExists(unit) then
+			if GetObjectExists(unit) then
 				local bossName = GetInstanceLockTimeRemainingEncounter(i)
 				local targetName = UnitName(unit)
 				-- Print("Target: "..targetName.." | Boss: "..bossName.." | Match: "..tostring(targetName == bossName))
@@ -2164,7 +2185,7 @@ end
 -- isBoss()
 function isBoss(unit)
 	if unit==nil then unit="target" end
-	if UnitExists(unit) then
+	if GetUnitExists(unit) then
 		local npcID = string.match(UnitGUID(unit),"-(%d+)-%x+$")
 		-- local bossCheck = LibStub("LibBossIDs-1.0").BossIDs[tonumber(npcID)] or false
 		-- local bossCheck = br.player.BossIDs[tonumber(npcID)] or false
@@ -2410,7 +2431,7 @@ function isGarrMCd(Unit)
 	if Unit == nil then
 		Unit = "target"
 	end
-	if UnitExists(Unit)
+	if GetUnitExists(Unit)
 		and (UnitDebuffID(Unit,145832)
 		or UnitDebuffID(Unit,145171)
 		or UnitDebuffID(Unit,145065)
@@ -2566,7 +2587,7 @@ function IsMovingTime(time)
 	end
 end
 function isPlayer(Unit)
-	if UnitExists(Unit) ~= true then
+	if GetUnitExists(Unit) ~= true then
 		return false
 	end
 	if UnitIsPlayer(Unit) == true then
@@ -2615,7 +2636,7 @@ function IsStandingTime(time)
 end
 -- if isCasting(12345,"target") then
 function isCasting(SpellID,Unit)
-	if GetObjectExists(Unit) and UnitIsVisible(Unit) then
+	if GetObjectExists(Unit) and GetUnitIsVisible(Unit) then
 		if isCasting(tostring(GetSpellInfo(SpellID)),Unit) == 1 then
 			return true
 		end
@@ -2639,13 +2660,13 @@ end
 -- if isValidTarget("target") then
 function isValidTarget(Unit)
 	if UnitIsEnemy("player",Unit) then
-		if UnitExists(Unit) and not UnitIsDeadOrGhost(Unit) then
+		if GetUnitExists(Unit) and not UnitIsDeadOrGhost(Unit) then
 			return true
 		else
 			return false
 		end
 	else
-		if UnitExists(Unit) then
+		if GetUnitExists(Unit) then
 			return true
 		else
 			return false
@@ -2658,7 +2679,7 @@ function isValidUnit(Unit)
 	local myTarget = UnitIsUnit(Unit,"target")
     local inCombat = UnitAffectingCombat("player")
     local inInstance =  IsInInstance()
-	if ObjectExists(Unit) and not UnitIsDeadOrGhost(Unit) and (not UnitIsFriend(Unit, "player") or UnitIsEnemy(Unit, "player")) and UnitCanAttack("player",Unit) and isSafeToAttack(Unit) then
+	if GetObjectExists(Unit) and not UnitIsDeadOrGhost(Unit) and (not UnitIsFriend(Unit, "player") or UnitIsEnemy(Unit, "player")) and UnitCanAttack("player",Unit) and isSafeToAttack(Unit) then
 		-- Only consider Units that are in 20yrs or I have targeted when not in Combat and not in an Instance.
 		if not inCombat and not inInstance and (inAggroRange or myTarget) then return true end
 		-- Only consider Units that I have threat with or I am alone and have targeted when not in Combat and in an Instance.
@@ -2765,7 +2786,7 @@ function pause(skipCastingCheck)
 			and not UnitBuffID("player",165803) and not UnitBuffID("player",157059)
 			and not UnitBuffID("player",157060))
 		or SpellIsTargeting()
-		-- or (not UnitCanAttack("player","target") and not UnitIsPlayer("target") and UnitExists("target"))
+		-- or (not UnitCanAttack("player","target") and not UnitIsPlayer("target") and GetUnitExists("target"))
 		or (UnitCastingInfo("player") and not skipCastingCheck)
 		or (UnitChannelInfo("player") and not skipCastingCheck)
 		or UnitIsDeadOrGhost("player")
@@ -2781,7 +2802,7 @@ function pause(skipCastingCheck)
 			return true
 		else
 			ChatOverlay("Profile Paused")
-			if UnitExists("pet") and UnitAffectingCombat("pet") then PetFollow() end
+			if GetUnitExists("pet") and UnitAffectingCombat("pet") then PetFollow() end
 			return true
 		end
 	else

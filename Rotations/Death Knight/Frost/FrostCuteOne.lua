@@ -86,7 +86,7 @@ local function createOptions()
         -------------------------
         section = br.ui:createSection(br.ui.window.profile, "Defensive")
             -- Healthstone
-            br.ui:createSpinner(section, "Healthstone",  60,  0,  100,  5,  "|cffFFBB00Health Percentage to use at.")
+            br.ui:createSpinner(section, "Healing Potion/Healthstone",  60,  0,  100,  5,  "|cffFFBB00Health Percentage to use at.")
             -- Heirloom Neck
             br.ui:createSpinner(section, "Heirloom Neck",  60,  0,  100,  5,  "|cffFFBB00Health Percentage to use at.")
             -- Anti-Magic Shell
@@ -166,6 +166,7 @@ local function runRotation()
         local enemies           = enemies or {}
         local gcd               = br.player.gcd
         local glyph             = br.player.glyph
+        local healPot           = getHealthPot()
         local inCombat          = br.player.inCombat
         local level             = br.player.level
         local mode              = br.player.mode
@@ -240,6 +241,14 @@ local function runRotation()
     -- Action List - Defensive
         local function actionList_Defensive()
             if useDefensive() and not IsMounted() then
+        -- Healthstone
+                if isChecked("Healthstone") and php <= getOptionValue("Healing Potion/Healthstone") and inCombat and (hasHealthPot() or hasItem(5512)) then
+                    if canUse(5512) then
+                        useItem(5512)
+                    elseif canUse(healPot) then
+                        useItem(healPot)
+                    end
+                end
         -- Anti-Magic Shell
                 if isChecked("Anti-Magic Shell") and php < getOptionValue("Anti-Magic Shell") and inCombat then
                     if cast.antiMagicShell() then return end
@@ -589,7 +598,7 @@ local function runRotation()
         local function actionList_GatheringStormTicking()
         -- Frost Strike
             -- frost_strike,if=buff.icy_talons.remains<1.5&talent.icy_talons.enabled
-            if buff.icyTalons.remin < 1.5 and talent.icyTalons then
+            if buff.icyTalons.remain() < 1.5 and talent.icyTalons then
                 if cast.frostStrike() then return end
             end
         -- Remorseless Winter
@@ -688,7 +697,7 @@ local function runRotation()
     -----------------------------
         -- Pillar of Frost
                 -- pillar_of_frost
-                if getOptionValue("Pillar of Frost") == 1 or (getOptionValue("Pillar of Frost") == 2 and useCDs()) then
+                if getOptionValue("Pillar of Frost") == 1 or (getOptionValue("Pillar of Frost") == 2 and useCDs()) and getDistance(units.dyn5) < 5 then
                     if cast.pillarOfFrost() then return end
                 end
                 if actionList_Cooldowns() then return end
@@ -715,7 +724,7 @@ local function runRotation()
                     end
         -- Generic
                     -- call_action_list,name=generic,if=!talent.breath_of_sindragosa.enabled&!(talent.gathering_storm.enabled&buff.remorseless_winter.remains)
-                    if not talent.breathOfSindragosa and not (talent.gatheringStorm and buff.remorselessWinder.exists()) then
+                    if not talent.breathOfSindragosa and not (talent.gatheringStorm and buff.remorselessWinter.exists()) then
                         if actionList_Generic() then return end
                     end
         -- Breath of Sindragosa

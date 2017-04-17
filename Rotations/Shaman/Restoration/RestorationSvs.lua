@@ -45,6 +45,15 @@ local function createToggles()
     CreateButton("DPS",6,0)
 end
 
+--------------
+--- COLORS ---
+--------------
+    local colorBlue     = "|cff00CCFF"
+    local colorGreen    = "|cff00FF00"
+    local colorRed      = "|cffFF0000"
+    local colorWhite    = "|cffFFFFFF"
+    local colorGold     = "|cffFFDD11"
+
 ---------------
 --- OPTIONS ---
 ---------------
@@ -83,6 +92,9 @@ local function createOptions()
         -- Healing Tide Totem
             br.ui:createSpinner(section, "Healing Tide Totem",  50,  0,  100,  5,  "Health Percent to Cast At") 
             br.ui:createSpinnerWithout(section, "Healing Tide Totem Targets",  3,  0,  40,  1,  "Minimum Healing Tide Totem Targets")
+        -- Ancestral Protection Totem
+            br.ui:createSpinner(section, "Ancestral Protection Totem",  70,  0,  100,  5,  "Health Percent to Cast At")
+            br.ui:createSpinnerWithout(section, "Ancestral Protection Totem Targets",  3,  0,  40,  1,  "Minimum Ancestral Protection Totem Targets")
         br.ui:checkSectionState(section)
     -- Defensive Options
         section = br.ui:createSection(br.ui.window.profile, "Defensive")
@@ -101,6 +113,9 @@ local function createOptions()
         -- Lightning Surge Totem
             br.ui:createSpinner(section, "Lightning Surge Totem - HP", 50, 0, 100, 5, "|cffFFFFFFHealth Percent to Cast At")
             br.ui:createSpinner(section, "Lightning Surge Totem - AoE", 5, 0, 10, 1, "|cffFFFFFFNumber of Units in 5 Yards to Cast At")
+        -- Earthen Shield Totem
+            br.ui:createSpinner(section, "Earthen Shield Totem",  95,  0,  100,  5,  "Health Percent to Cast At") 
+            br.ui:createSpinnerWithout(section, "Earthen Shield Totem Targets",  1,  0,  40,  1,  "Minimum Earthen Shield Totem Targets")
         br.ui:checkSectionState(section)
     -- Interrupt Options
         section = br.ui:createSection(br.ui.window.profile, "Interrupts")
@@ -116,6 +131,12 @@ local function createOptions()
         -- Healing Rain
             br.ui:createSpinner(section, "Healing Rain",  80,  0,  100,  5,  "Health Percent to Cast At") 
             br.ui:createSpinnerWithout(section, "Healing Rain Targets",  2,  0,  40,  1,  "Minimum Healing Rain Targets")
+            br.ui:createDropdown(section,"Healing Rain Key", br.dropOptions.Toggle, 6, colorGreen.."Enables"..colorWhite.."/"..colorRed.."Disables "..colorWhite.." Healing Rain manual usage.")
+            br.ui:createCheckbox(section,"Healing Rain on CD")
+        -- Spirit Link Totem
+            br.ui:createSpinner(section, "Spirit Link Totem",  50,  0,  100,  5,  "Health Percent to Cast At") 
+            br.ui:createSpinnerWithout(section, "Spirit Link Totem Targets",  3,  0,  40,  1,  "Minimum Spirit Link Totem Targets")
+            br.ui:createDropdown(section,"Spirit Link Totem Key", br.dropOptions.Toggle, 6, colorGreen.."Enables"..colorWhite.."/"..colorRed.."Disables "..colorWhite.." Spirit Link Totem manual usage.")
         -- Riptide
             br.ui:createSpinner(section, "Riptide",  90,  0,  100,  5,  "|cffFFFFFFHealth Percent to Cast At")
         -- Healing Stream Totem
@@ -185,7 +206,7 @@ local function runRotation()
         local cd                                            = br.player.cd
         local charges                                       = br.player.charges
         local debuff                                        = br.player.debuff
-        local enemies                                       = enemies or {}
+        local drinking                                      = UnitBuff("player",192002) ~= nil or UnitBuff("player",167152) ~= nil
         local gcd                                           = br.player.gcd
         local healPot                                       = getHealthPot()
         local inCombat                                      = br.player.inCombat
@@ -210,12 +231,24 @@ local function runRotation()
         local ttm                                           = br.player.power.ttm
         local units                                         = units or {}
         local lowestTank                                    = {}    --Tank
-        local tHp                                           = 95
+        local enemies                                       = enemies or {}
+        local friends                                       = friends or {}
 
         if CloudburstTotemTime == nil or cd.cloudburstTotem == 0 or not talent.cloudburstTotem then CloudburstTotemTime = 0 end
 
+    -- Cloudburst Totem
+        if isChecked("Cloudburst Totem") and talent.cloudburstTotem and not buff.cloudburstTotem.exists() then
+            if getLowAllies(getValue("Cloudburst Totem")) >= getValue("Cloudburst Totem Targets") then
+                if cast.cloudburstTotem() then
+                    ChatOverlay(colorGreen.."Cloudburst Totem!")
+                    CloudburstTotemTime = GetTime()
+                    return
+                end
+            end
+        end
+
         if inCombat and not IsMounted() then
-            if isChecked("Ancestral Guidance") and talent.ancestralGuidance and (not CloudburstTotemTime or GetTime() >= CloudburstTotemTime + 6) then
+            if isChecked("Ancestral Guidance") and talent.ancestralGuidance and talent.cloudburstTotem and (not CloudburstTotemTime or GetTime() >= CloudburstTotemTime + 6) then
                 if getLowAllies(getValue("Ancestral Guidance")) >= getValue("Ancestral Guidance Targets") then
                     if cast.ancestralGuidance() then return end
                 end
@@ -232,6 +265,9 @@ local function runRotation()
         enemies.yards20 = br.player.enemies(20)
         enemies.yards30 = br.player.enemies(30)
         enemies.yards40 = br.player.enemies(40)
+        friends.yards8 = getAllies("player",8)
+        friends.yards25 = getAllies("player",25)
+        friends.yards40 = getAllies("player",40)
 
 --------------------
 --- Action Lists ---
@@ -240,7 +276,7 @@ local function runRotation()
         local function actionList_Extras()
         -- Dummy Test
             if isChecked("DPS Testing") then
-                if ObjectExists("target") then
+                if GetObjectExists("target") then
                     if getCombatTime() >= (tonumber(getOptionValue("DPS Testing"))*60) and isDummy() then
                         StopAttack()
                         ClearTarget()
@@ -256,7 +292,7 @@ local function runRotation()
                 end
             end
         -- Purge
-            if isChecked("Purge") and canDispel("target",spell.purge) and not isBoss() and ObjectExists("target") then
+            if isChecked("Purge") and canDispel("target",spell.purge) and not isBoss() and GetObjectExists("target") then
                 if cast.purge() then return end
             end
         -- Water Walking
@@ -351,32 +387,27 @@ local function runRotation()
                 end
             end
         -- Chain Heal
-            if isChecked("Chain Heal") and not moving and lastSpell ~= spell.chainHeal then
-                if getLowAllies(getValue("Chain Heal")) >= getValue("Chain Heal Targets") then    
-                    if cast.chainHeal() then return end    
+            if isChecked("Chain Heal") and lastSpell ~= spell.chainHeal then
+                if castWiseAoEHeal(br.friend,spell.chainHeal,20,getValue("Chain Heal"),getValue("Chain Heal Targets"),5,false,true) then return end
+            end
+        -- Healing Rain
+            if not moving then
+                if (SpecificToggle("Healing Rain Key") and not GetCurrentKeyBoardFocus()) then
+                    if CastSpellByName(GetSpellInfo(spell.healingRain),"cursor") then return end 
+                end
+            end
+        -- Spirit Link Totem
+            if not moving then
+                if (SpecificToggle("Spirit Link Totem Key") and not GetCurrentKeyBoardFocus()) then
+                    if CastSpellByName(GetSpellInfo(spell.spiritLinkTotem),"cursor") then return end 
                 end
             end
         end  -- End Action List - Pre-Combat
         function actionList_Cooldowns()
             if useCDs() then
-            -- Cloudburst Totem
-                if isChecked("Cloudburst Totem") and talent.cloudburstTotem and not buff.cloudburstTotem.exists() then
-                    if getLowAllies(getValue("Cloudburst Totem")) >= getValue("Cloudburst Totem Targets") then
-                        if cast.cloudburstTotem() then 
-                            CloudburstTotemTime = GetTime()
-                            return
-                        end
-                    end
-                end
-            -- Ancestral Guidance
-                if isChecked("Ancestral Guidance") and talent.ancestralGuidance and not talent.cloudburstTotem then
-                    if getLowAllies(getValue("Ancestral Guidance")) >= getValue("Ancestral Guidance Targets") then
-                        if cast.ancestralGuidance() then return end
-                    end
-                end
             -- Ascendance
                 if isChecked("Ascendance") and talent.ascendance and not talent.cloudburstTotem then
-                    if getLowAllies(getValue("Ascendance")) >= getValue("Ascendance Targets") then    
+                    if getLowAllies(getValue("Ascendance")) >= getValue("Ascendance Targets") then
                         if cast.ascendance() then return end    
                     end
                 end
@@ -386,6 +417,8 @@ local function runRotation()
                         if cast.healingTideTotem() then return end    
                     end
                 end
+            -- Ancestral Protection Totem
+                if castWiseAoEHeal(br.friend,spell.ancestralProtectionTotem,20,getValue("Ancestral Protection Totem"),getValue("Ancestral Protection Totem Targets"),10,false,false) then return end
             -- Trinkets
                 if isChecked("Trinkets") then
                     if canUse(11) then
@@ -428,9 +461,12 @@ local function runRotation()
                 end
             end
         -- Healing Rain
-            if isChecked("Healing Rain") and not moving and not buff.healingRain.exists() then
-                if getLowAllies(getValue("Healing Rain")) >= getValue("Healing Rain Targets") then
-                    if castGroundAtBestLocation(spell.healingRain, 20, 0, 40, 0, "heal") then return end    
+            if not moving then
+                if (SpecificToggle("Healing Rain Key") and not GetCurrentKeyBoardFocus()) then
+                    if CastSpellByName(GetSpellInfo(spell.healingRain),"cursor") then return end 
+                end
+                if isChecked("Healing Rain") and not buff.healingRain.exists() then
+                    if castWiseAoEHeal(br.friend,spell.healingRain,12,getValue("Healing Rain"),getValue("Healing Rain Targets"),6,false,true) then return end
                 end
             end
         -- Riptide
@@ -446,9 +482,7 @@ local function runRotation()
             end
         -- Gift of the Queen
             if isChecked("Gift of the Queen") then
-                if getLowAllies(getValue("Gift of the Queen")) >= getValue("Gift of the Queen Targets") then
-                    if cast.giftOfTheQueen() then return end
-                end
+                if castWiseAoEHeal(br.friend,spell.giftOfTheQueen,12,getValue("Gift of the Queen"),getValue("Gift of the Queen Targets"),5,false,false) then return end
             end
         -- Healing Stream Totem
             if isChecked("Healing Stream Totem") then
@@ -459,10 +493,10 @@ local function runRotation()
                 end
             end
         -- Unleash Life
-            if isChecked("Unleash Life") and talent.unleashLife then
+            if isChecked("Unleash Life") and talent.unleashLife and not hasEquiped(137051) then
                 for i = 1, #br.friend do                           
                     if br.friend[i].hp <= getValue("Unleash Life") then
-                        if cast.unleashLife() then return end     
+                        if cast.unleashLife() then return end
                     end
                 end
             end
@@ -485,32 +519,46 @@ local function runRotation()
         end -- End Action List - Cloudburst Totem
         -- AOE Healing
         function actionList_AOEHealing()
+        -- Ancestral Guidance
+            if isChecked("Ancestral Guidance") and talent.ancestralGuidance and not talent.cloudburstTotem then
+                if getLowAllies(getValue("Ancestral Guidance")) >= getValue("Ancestral Guidance Targets") then
+                    if cast.ancestralGuidance() then return end
+                end
+            end
         -- Chain Heal
-            if isChecked("Chain Heal") and not moving and lastSpell ~= spell.chainHeal then
-                if getLowAllies(getValue("Chain Heal")) >= getValue("Chain Heal Targets") then    
-                    if cast.chainHeal() then return end    
+            if isChecked("Chain Heal") and lastSpell ~= spell.chainHeal then
+                if talent.unleashLife and talent.highTide then
+                    if cast.unleashLife(lowest) then return end
+                    if buff.unleashLife.remain() > 2 then
+                        if castWiseAoEHeal(br.friend,spell.chainHeal,20,getValue("Chain Heal"),(getValue("Chain Heal Targets") + 1),5,false,true) then return end
+                    end
+                elseif talent.highTide then
+                    if castWiseAoEHeal(br.friend,spell.chainHeal,20,getValue("Chain Heal"),(getValue("Chain Heal Targets") + 1),5,false,true) then return end
+                else
+                    if castWiseAoEHeal(br.friend,spell.chainHeal,20,getValue("Chain Heal"),getValue("Chain Heal Targets"),5,false,true) then return end
                 end
             end
         -- Gift of the Queen
-            if isChecked("Gift of the Queen") and not talent.cloudburstTotem then
-                if getLowAllies(getValue("Gift of the Queen")) >= getValue("Gift of the Queen Targets") then
-                    if cast.giftOfTheQueen() then return end
-                end
+            if isChecked("Gift of the Queen") then
+                if castWiseAoEHeal(br.friend,spell.giftOfTheQueen,12,getValue("Gift of the Queen"),getValue("Gift of the Queen Targets"),5,false,false) then return end
             end
         -- Wellspring
             if isChecked("Wellspring") then
-                if getLowAllies(getValue("Wellspring")) >= getValue("Wellspring Targets") then
-                    if talent.cloudburstTotem and buff.cloudburstTotem.exists() then
-                        if cast.wellspring() then return end    
-                    else
-                        if cast.wellspring() then return end
-                    end
+                if talent.cloudburstTotem and buff.cloudburstTotem.exists() then
+                    if castWiseAoEHeal(br.friend,spell.wellspring,20,getValue("Wellspring"),getValue("Wellspring Targets"),6,true,true) then return end
+                else
+                    if castWiseAoEHeal(br.friend,spell.wellspring,20,getValue("Wellspring"),getValue("Wellspring Targets"),6,true,true) then return end
                 end
             end
         -- Healing Rain
-            if isChecked("Healing Rain") and not moving and not buff.healingRain.exists() then
-                if getLowAllies(getValue("Healing Rain")) >= getValue("Healing Rain Targets") then    
-                    if castGroundAtBestLocation(spell.healingRain, 20, 0, 40, 0, "heal") then return end    
+            if not moving then
+                if (SpecificToggle("Healing Rain Key") and not GetCurrentKeyBoardFocus()) then
+                    if CastSpellByName(GetSpellInfo(spell.healingRain),"cursor") then return end 
+                end
+                if isChecked("Healing Rain on CD") and not buff.healingRain.exists() then
+                    --if castWiseAoEHeal(br.friend,spell.healingRain,12,100,3,6,false,true) then return end
+                    --castGroundAtBestLocation(spellID, radius, minUnits, maxRange, minRange, spellType)
+                    if castGroundAtBestLocation(spell.healingRain,20,2,40,5,"heal") then return end
                 end
             end
         end -- End Action List - AOEHealing
@@ -529,6 +577,23 @@ local function runRotation()
                     end
                 end
             end
+        -- Tidal Waves Proc Handling
+            if buff.tidalWaves.stack() == 2 or level < 100 then
+                if isChecked("Healing Surge") then
+                    for i = 1, #br.friend do                           
+                        if br.friend[i].hp <= getValue("Healing Surge") then
+                            if cast.healingSurge(br.friend[i].unit) then return end     
+                        end
+                    end
+                end
+                if isChecked("Healing Wave") then
+                    for i = 1, #br.friend do                           
+                        if br.friend[i].hp <= getValue("Healing Wave") then
+                            if cast.healingWave(br.friend[i].unit) then return end     
+                        end
+                    end
+                end
+            end
         -- Riptide
             if isChecked("Riptide") then
                 if not buff.tidalWaves.exists() and level >= 34 then
@@ -541,19 +606,25 @@ local function runRotation()
                 end
             end
         -- Earthen Shield Totem
-            if talent.earthenShieldTotem and not moving then
-                if cast.earthenShieldTotem() then return end
+            if isChecked("Earthen Shield Totem") and talent.earthenShieldTotem then
+                if castWiseAoEHeal(br.friend,spell.earthenShieldTotem,20,getValue("Earthen Shield Totem"),getValue("Earthen Shield Totem Targets"),6,false,true) then return end
             end
         -- Healing Stream Totem
             if isChecked("Healing Stream Totem") then
                 for i = 1, #br.friend do                           
                     if br.friend[i].hp <= getValue("Healing Stream Totem") then
-                        if cast.healingStreamTotem(br.friend[i].unit) then return end     
+                        if not talent.echoOfTheElements then
+                            if cast.healingStreamTotem(br.friend[i].unit) then return end
+                        elseif talent.echoOfTheElements and (not HSTime or GetTime() - HSTime > 15) then
+                            if cast.healingStreamTotem(br.friend[i].unit) then
+                            HSTime = GetTime()
+                            return true end
+                        end 
                     end
                 end
             end
         -- Unleash Life
-            if isChecked("Unleash Life") and talent.unleashLife then
+            if isChecked("Unleash Life") and talent.unleashLife and not hasEquiped(137051) then
                 for i = 1, #br.friend do                           
                     if br.friend[i].hp <= getValue("Unleash Life") then
                         if cast.unleashLife() then return end     
@@ -568,6 +639,22 @@ local function runRotation()
                     end
                 end
             end
+        -- Healing Rain
+            if not moving then
+                if (SpecificToggle("Healing Rain Key") and not GetCurrentKeyBoardFocus()) then
+                    if CastSpellByName(GetSpellInfo(spell.healingRain),"cursor") then return end 
+                end
+                if isChecked("Healing Rain") and not buff.healingRain.exists() then
+                    if castWiseAoEHeal(br.friend,spell.healingRain,12,getValue("Healing Rain"),getValue("Healing Rain Targets"),6,false,true) then return end
+                end
+            end
+        -- Spirit Link Totem
+            if isChecked("Spirit Link Totem") and not moving then
+                if (SpecificToggle("Spirit Link Totem Key") and not GetCurrentKeyBoardFocus()) then
+                    if CastSpellByName(GetSpellInfo(spell.spiritLinkTotem),"cursor") then return end 
+                end
+                if castWiseAoEHeal(br.friend,spell.spiritLinkTotem,12,getValue("Spirit Link Totem"),getValue("Spirit Link Totem Targets"),40,false,true) then return end
+            end
         -- Healing Wave
             if isChecked("Healing Wave") then
                 for i = 1, #br.friend do                           
@@ -579,10 +666,14 @@ local function runRotation()
         -- Oh Shit! Healing Surge
             if isChecked("Healing Surge") then
                 for i = 1, #br.friend do                           
-                    if br.friend[i].hp <= 30 then
+                    if br.friend[i].hp <= 40 then
                         if cast.healingSurge(br.friend[i].unit) then return end     
                     end
                 end
+            end
+            -- Ephemeral Paradox trinket
+            if hasEquiped(140805) and getBuffRemain("player", 225771) > 2 then
+                if cast.healingWave(lowest.unit) then return end
             end
         end -- End Action List Single Target
     -- Action List - DPS
@@ -596,12 +687,17 @@ local function runRotation()
             end
         -- Lava Burst - Lava Surge
             if buff.lavaSurge.exists() then
-                if cast.lavaBurst() then return end
+                for i = 1, #enemies.yards40 do        
+                    local thisUnit = enemies.yards40[i]
+                    if debuff.flameShock.exists(thisUnit) and isValidUnit(thisUnit) then
+                        if cast.lavaBurst(thisUnit) then return end
+                    end
+                end
             end
         -- Flameshock
             for i = 1, #enemies.yards40 do
-                local thisUnit = enemies.yards5[i]
-                if not debuff.flameShock.exists(thisUnit) then
+                local thisUnit = enemies.yards40[i]
+                if not debuff.flameShock.exists(thisUnit) and isValidUnit(thisUnit) then
                     if cast.flameShock(thisUnit) then return end
                 end
             end
@@ -622,7 +718,7 @@ local function runRotation()
 ---------------------------------
 --- Out Of Combat - Rotations ---
 ---------------------------------
-            if not inCombat and not IsMounted() and getBuffRemain("player", 192002 ) < 10 then
+            if not inCombat and not IsMounted() and not drinking then
                 actionList_Extras()
                 if isChecked("OOC Healing") then
                     actionList_PreCombat()
@@ -631,7 +727,7 @@ local function runRotation()
 -----------------------------
 --- In Combat - Rotations --- 
 -----------------------------
-            if inCombat and not IsMounted() and getBuffRemain("player", 192002 ) < 10 then
+            if inCombat and not IsMounted() and not drinking then
                 actionList_Defensive()
                 actionList_Interrupts()
                 actionList_Cooldowns()

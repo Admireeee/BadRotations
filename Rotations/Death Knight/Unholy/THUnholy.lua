@@ -44,15 +44,15 @@ end
         end
     end
 -- ObjectCheck 
-    local function objectExists(objectID)
-        for i = 1, ObjectCount() do
-            local thisUnit = GetObjectWithIndex(i)
-            if ObjectExists(thisUnit) and GetObjectID(thisUnit) == objectID then 
-                return true
-            end
-        end
-        return false
-    end
+     local function GetObjExists(objectID)
+         for i = 1, ObjectCount() do
+             local thisUnit = GetObjectWithIndex(i)
+             if GetObjectExists(thisUnit) and GetObjectID(thisUnit) == objectID then
+                 return true
+             end
+         end
+         return false
+     end
 ---------------
 --- OPTIONS ---
 ---------------
@@ -222,6 +222,7 @@ local function runRotation()
         local level             = br.player.level
         local mode              = br.player.mode
         local moving            = GetUnitSpeed("player")>0
+        local normalMob         = not(useCDs() or playertar)
         local php               = br.player.health
         local power             = br.player.power
         local pullTimer         = br.DBM:getPulltimer()
@@ -269,7 +270,7 @@ local function runRotation()
 -------------------
 --- Raise Pet   ---
 -------------------
-        if not inCombat and not IsMounted() and isChecked("Auto Summon") and not UnitExists("pet") and (UnitIsDead("pet") ~= nil or UnitIsDead("pet") == false) then
+        if not inCombat and not IsMounted() and isChecked("Auto Summon") and not GetUnitExists("pet") and (UnitIsDead("pet") ~= nil or UnitIsDead("pet") == false) then
             if waitForPetToAppear ~= nil and waitForPetToAppear < GetTime() - 2 and onlyOneTry ~= nil and not onlyOneTry then
                 onlyOneTry = true
                 if cast.raiseDead() then return end
@@ -300,13 +301,13 @@ local function runRotation()
             end
         --Dark Transformation
             if  (    
-                    (   getOptionValue("Dark Transformation") == 1 
+                    (   getOptionValue("Dark Transformation") == 1 --Units or Boss
                         and #enemies.yards10 >= getOptionValue("Dark Transformation Units") 
                         or useCDs() 
                         or playertar
                     )   
                     or 
-                    (   getOptionValue("Dark Transformation") == 2 
+                    (   getOptionValue("Dark Transformation") == 2 --Cooldown only
                         and (
                                 useCDs() or playertar
                             )
@@ -314,15 +315,17 @@ local function runRotation()
                 )
                 and not immun
                 and not bop
-                and ((hasEquiped(137075) and not (cd.apocalypse < 10)) or playertar)
+                and (((hasEquiped(137075) and not (cd.apocalypse < 10)) or playertar) or not hasEquiped(137075))
                 and getDistance("target") < 5
+                and (not talent.darkArbiter or (talent.darkArbiter and cd.summonGargoyle > 60))
                 and (not talent.soulReaper or (not debuff.soulReaper.exists("target") or buff.soulReaper.stack("player") == 3))
+                and not (buff.soulReaper.stack("player") == 3 and cd.summonGargoyle <= 0)
             then
                 if cast.darkTransformation() then return end
             end
         --Death and Decay
             if #enemies.yards10 >= getOptionValue("Death and Decay") and debuff.festeringWound.stack("target") >= getOptionValue("DnD Festering Wounds") and not isMoving("player") then
-                if cast.deathAndDecay("target") then return end
+                if cast.deathAndDecay("player") then return end
             end
         --Potion
             if useCDs() and isChecked("Potion") and getDistance("target") < 15 and not isDummy() and not playertar then
@@ -350,10 +353,8 @@ local function runRotation()
                 and (not talent.soulReaper or buff.soulReaper.stack("player") == 3 or (not debuff.soulReaper.exists("target") and cd.soulReaper > 30))
                 and cd.summonGargoyle <= 0 
                 and (not talent.darkArbiter or runicPowerDeficit <= 10)
-                and hasEquiped(137075)
             then
-                if cast.darkTransformation() then return end
-                if cast.summonGargoyle() then return end
+                if cast.summonGargoyle() then return end               
             end
         end
     ---------------------------------------------------------------------------------------------------------------------------------    
@@ -465,6 +466,8 @@ local function runRotation()
                         profileStop = true
                         StopAttack()
                         ClearTarget()
+                        PetStopAttack()
+                        PetPassiveMode()
                         Print(tonumber(getValue("DPS Testing")) .." Minute Dummy Test Concluded - Profile Stopped")
                         return true
                     end
@@ -476,15 +479,14 @@ local function runRotation()
                     if playertar 
                         and (not debuff.chainsOfIce.exists("target"))
                         and (not talent.soulReaper or not debuff.soulReaper.exists("target") or (buff.soulReaper.stack("player") == 3)  or  getDistance("target") > 5)
-                        and getFacing("player","target")
                         and not (UnitBuff("target","Blessing of Freedom") ~= nil)
                         and not immun
                         and not cloak
-                      --  and isMoving(thisUnit) 
+                        and isMoving("target") 
                         and getDistance("target") <= 30
                         and inCombat
                     then
-                        if cast.chainsOfIce("target") then waitforNextIoC = GetTime() return end
+                        if cast.chainsOfIce("target","aoe") then waitforNextIoC = GetTime() return end
                     end
                 end
                 
@@ -492,36 +494,34 @@ local function runRotation()
         --Chains of Ice focus
             if isChecked("Chains of Ice Focus") then
                 if waitforNextIoCFocus < GetTime() -1.5 then
-                    if UnitExists("focus")
+                    if GetUnitExists("focus")
                         and (not debuff.chainsOfIce.exists("focus"))
                         and (not talent.soulReaper or not debuff.soulReaper.exists("target") or (buff.soulReaper.stack("player") == 3))
-                        and getFacing("player","focus")
                         and not (UnitBuff("focus","Blessing of Freedom") ~= nil)
                         and not immun
                         and not cloak
-                      --  and isMoving(thisUnit) 
+                        and isMoving("focus") 
                         and getDistance("focus") <= 30
                     then
-                        if cast.chainsOfIce("focus") then waitforNextIoCFocus = GetTime() return end
+                        if cast.chainsOfIce("focus","aoe") then waitforNextIoCFocus = GetTime() return end
                     end
                 end
             end
         --Virulent Plague
-            if (UnitExists("target") and objIDLastVirPlagueTarget ~= ObjectID("target")) or (waitfornextVirPlague < GetTime() - 6) then
+            if GetUnitExists("target") and ((objIDLastVirPlagueTarget ~= ObjectID("target")) or (waitfornextVirPlague < GetTime() - 6)) then
                 if (not debuff.virulentPlague.exists("target")
                     or debuff.virulentPlague.remain("target") < 1.5) 
                     and not debuff.soulReaper.exists("target")
                     and not immun
                     and not cloak
-                    and not UnitIsDeadOrGhost("target")
+                    and UnitIsDeadOrGhost("target") ~= nil
                 then
-                    if cast.outbreak("target") then 
+                    if cast.outbreak("target","aoe") then 
                         waitfornextVirPlague = GetTime() 
                         objIDLastVirPlagueTarget = ObjectID("target")
                         return 
                     end
                 end
-                local unitWithoutVirPlague = "player"
                 for i = 1, #enemies.yards30 do
                     local thisUnit = enemies.yards30[i]
                     if not debuff.virulentPlague.exists(thisUnit) 
@@ -529,7 +529,7 @@ local function runRotation()
                         and not cloak
                         and not immun
                     then
-                        if cast.outbreak(thisUnit) then 
+                        if cast.outbreak(thisUnit,"aoe") then 
                             waitfornextVirPlague = GetTime() 
                             return 
                         end
@@ -551,7 +551,11 @@ local function runRotation()
                         or (not talent.sludgeBelcher and cd.leap <= 0) 
                         or (talent.sludgeBelcher and cd.hook <= 0) 
                     then
-                        local kickpercent = getOptionValue("InterruptAt") + math.random(-5,5)
+                        if kickpercent == nil or kickCommited == nil or kickCommited then
+                            kickCommited = false
+                            kickpercent = getOptionValue("InterruptAt") + math.random(-5,5)
+                            print("new Kickpercent : ", kickpercent)
+                        end
                         for i=1, #enemies.yards30 do
                             thisUnit = enemies.yards30[i]
                             if inCombat 
@@ -567,10 +571,10 @@ local function runRotation()
                                     and getDistance(thisUnit) < 30
                                 then
                                     if talent.sludgeBelcher then
-                                        if cast.hook(thisUnit) then waitforNextKick = GetTime(); print("Hook Kick") return end
+                                        if cast.hook(thisUnit) then waitforNextKick = GetTime(); print("Hook Kick"); kickCommited = true; return end
                                     elseif buff.darkTransformation.exists("pet")
                                     then
-                                        if cast.leap(thisUnit) then waitforNextKick = GetTime(); print("Leap Kick") return end
+                                        if cast.leap(thisUnit) then waitforNextKick = GetTime(); print("Leap Kick"); kickCommited = true; return end
                                     end
                                 end
                                 -- Mind Freeze
@@ -579,7 +583,7 @@ local function runRotation()
                                     and getDistance(thisUnit) < 15 
                                     and getFacing("player",thisUnit) 
                                 then
-                                    if cast.mindFreeze(thisUnit) then waitforNextKick = GetTime(); print("Mind Freeze") return end
+                                    if cast.mindFreeze(thisUnit) then waitforNextKick = GetTime(); print("Mind Freeze"); kickCommited = true; return end
                                 end
                                 --Asphyxiate
                                 if isChecked("Asphyxiate Kick") 
@@ -587,14 +591,14 @@ local function runRotation()
                                     and getDistance(thisUnit) < 20 
                                     and getFacing("player",thisUnit) 
                                 then
-                                    if cast.asphyxiate(thisUnit) then waitforNextKick = GetTime(); print("Asphyxiate Kick") return end
+                                    if cast.asphyxiate(thisUnit) then waitforNextKick = GetTime(); print("Asphyxiate Kick"); kickCommited = true; return end
                                 end
                                 -- DeathGrip
                                 if isChecked("Death Grip") 
                                     and getDistance("target") < 5
                                     and getFacing("player",thisUnit) 
                                 then
-                                    if cast.deathGrip(thisUnit) then waitforNextKick = GetTime(); print ("Grip Kick") return end
+                                    if cast.deathGrip(thisUnit) then waitforNextKick = GetTime(); print ("Grip Kick"); kickCommited = true; return end
                                 end
                             end
                         end --endfor
@@ -617,15 +621,15 @@ local function runRotation()
                     end
                 end
             --PetDismiss
-                if getHP("pet") < 40 
-                    and UnitExists("pet") 
+                if getHP("pet") < 20 
+                    and GetUnitExists("pet")
                     and not buff.corpseShield.exists() 
                 then
                     print("Pet Dismiss - Low Health")
                     PetDismiss()
                 end
             --Auto Summon
-                if isChecked("Auto Summon") and not UnitExists("pet") and (UnitIsDead("pet") ~= nil or UnitIsDead("pet") == false) then
+                if isChecked("Auto Summon") and not GetUnitExists("pet") and (UnitIsDead("pet") ~= nil or UnitIsDead("pet") == false) then
                     if waitForPetToAppear < GetTime() - 2 then
                         if cast.raiseDead() then waitForPetToAppear = GetTime(); return end
                     end
@@ -675,7 +679,7 @@ local function runRotation()
     -- Action List - Soul Reaper
     ---------------------------------------------------------------------------------------------------------------------------------
         local function actionList_SoulReaper()
-            if isChecked("Debug Info") then Print("actionList_Generic") end
+            if isChecked("Debug Info") then Print("actionList_SoulReaper") end
             if printevery2S then
                -- print(runicPowerDeficit, runicPower, runes)
             end
@@ -702,6 +706,7 @@ local function runRotation()
         --ScourgeStrike spam DnD
             if buff.deathAndDecay.exists("player")
                 and #enemies.yards10 > 2
+                and runicPowerDeficit > 13
                 and not immun
                 and not cloak
             then
@@ -745,7 +750,7 @@ local function runRotation()
         --Death Coil
             if (runicPower >= 80
                 or (buff.suddenDoom.exists() and buff.suddenDoom.remain() < 8))
-                and (not buff.necrosis.exists("player") or (buff.suddenDoom.stack("player") and buff.suddenDoom.remain() < 2) or runicPowerDeficit >= 20)
+                and (not buff.necrosis.exists("player") or ((not br.player.artifact.doubleDoom or buff.suddenDoom.stack("player") > 1) and buff.suddenDoom.remain() < 2) or runicPowerDeficit <= 20)
                 and not immun
                 and not cloak
             then
@@ -843,13 +848,16 @@ local function runRotation()
                 end
             end           
         --Death Coil
-            if ((not (useCDs() or playertar) or cd.darkArbiter >= 5) and runicPower >= 80
-                or (buff.suddenDoom.exists() and buff.suddenDoom.remain() < 8))
-                and (not buff.necrosis.exists("player") or buff.suddenDoom.remain() < 2 or runicPower > 90)
-                and not immun
-                and not cloak
-            then
-                if cast.deathCoil("target") then return end
+            if normalMob or cd.darkArbiter >= 5 then
+                if runicPowerDeficit <= 20
+                    or (buff.suddenDoom.exists() and buff.suddenDoom.remain() < 8)
+                
+                    and (not buff.necrosis.exists("player") or buff.suddenDoom.remain() < 2 or runicPowerDeficit < 20)
+                    and not immun
+                    and not cloak
+                then
+                    if cast.deathCoil("target") then return end
+                end
             end
         --Festering Strike
             if ((debuff.festeringWound.stack("target") < 5)
@@ -890,7 +898,7 @@ local function runRotation()
             end
         --DeathCoil
             if getDistance("target") > 5 
-                and not (cd.darkArbiter <= 5)
+                and cd.darkArbiter >= 5
                 and not immun
                 and not cloak
             then
@@ -901,24 +909,26 @@ local function runRotation()
     -- Action List - Dark Arbiter exist
     ---------------------------------------------------------------------------------------------------------------------------------
         local function actionList_DarkArbiter()
-
-            --DeathCoil Dump            
-                if runicPower >= 35 then
-                    if not immun and not cloak
-                    then
-                        if cast.deathCoil("target") then return end
-                    end
-                end
-             --Apocalypse
+            --Apocalypse
                 if cd.apocalypse <= 0
                     and debuff.festeringWound.stack("target") >= 7
+                    and runicPowerDeficit > 21
                     and not immun
                     and not bop
                 then
                     if cast.apocalypse("target") then return end
                 end
+            --Dark Transformation
+                if hasEquiped(137075)  then 
+                    if cast.darkTransformation() then return end
+                end
+            --DeathCoil Dump        
+                if not immun and not cloak
+                then
+                    if cast.deathCoil("target") then return end
+                end
             --Festering Strike
-                if runes >= 2 and debuff.festeringWound.stack("target") <= 5 then
+                if runes >= 2 and debuff.festeringWound.stack("target") < 5 then
                     if cast.festeringStrike("target") then return end
                 end
             --Scourge
@@ -937,7 +947,85 @@ local function runRotation()
                 end
                 
         end
-    
+    ---------------------------------------------------------------------------------------------------------------------------------
+    -- Action List -Generic
+    ---------------------------------------------------------------------------------------------------------------------------------
+        local function actionList_Generic()
+            --ScourgeStrike spam DnD
+            if buff.deathAndDecay.exists("player")
+                and #enemies.yards10 > 2
+                and not immun
+                and not cloak
+            then
+                if playertar and isChecked("Necro Spam") and dampeningCount >= getOptionValue("Necro Spam") then 
+                    if cast.necroticStrike("target") then
+                        return 
+                    elseif talent.clawingShadows then
+                        if cast.clawingShadows("target") then return end
+                    else
+                        if cast.scourgeStrike("target") then return end
+                    end
+                elseif talent.clawingShadows then
+                    if cast.clawingShadows("target") then return end
+                else
+                    if cast.scourgeStrike("target") then return end
+                end
+            end  
+            --Death Coil
+            if (runicPower >= 80
+                or (buff.suddenDoom.exists() and buff.suddenDoom.remain() < 8))
+                and ((not buff.necrosis.exists("player") or buff.suddenDoom.remain() < 2) or runicPowerDeficit >= 20)
+                and not immun
+                and not cloak
+            then
+                if cast.deathCoil("target") then return end
+            end
+            --Festering Strike
+            if ((debuff.festeringWound.stack("target") < 5)
+                or (debuff.festeringWound.stack("target") < 8 and cd.apocalypse == 0))
+                and not immun
+                and not bop
+                then
+                if cast.festeringStrike("target") then return end
+            end
+            --Scourge
+            if debuff.festeringWound.stack("target") > 3
+                and (not (cd.soulReaper < 5) or runes > 4)
+                and runes > 2
+                and not immun
+                and not cloak
+            then
+                if playertar and isChecked("Necrotic Strike") then 
+                    if cast.necroticStrike("target") then 
+                        return 
+                    elseif talent.clawingShadows then
+                        if cast.clawingShadows("target") then return end
+                    else
+                        if cast.scourgeStrike("target") then return end
+                    end
+                elseif talent.clawingShadows then
+                    if cast.clawingShadows("target") then return end
+                else
+                    if cast.scourgeStrike("target") then return end
+                end
+            end
+            --Clawing Shadow  is out of range
+            if  talent.clawingShadows 
+                and getDistance("target") > 5 
+                and runes > 2 
+                and not cloak
+                and not immun
+            then
+                if cast.clawingShadows("target") then return end
+            end
+            --DeathCoil
+            if getDistance("target") > 5 
+                and not immun
+                and not cloak
+            then
+                if cast.deathCoil("target") then return end
+            end
+        end
 -----------------
 --- Rotations ---
 -----------------
@@ -949,14 +1037,14 @@ local function runRotation()
 ---------------------------------
 --- Out Of Combat - Rotations ---
 ---------------------------------
-            if not inCombat and ObjectExists("target") and not UnitIsDeadOrGhost("target") and UnitCanAttack("target", "player") then
+            if not inCombat and GetObjectExists("target") and not UnitIsDeadOrGhost("target") and UnitCanAttack("target", "player") then
                 if isChecked("Debug Info") then Print("OOC") end
                 startDampeningTimer = false
             end -- End Out of Combat Rotation
 -----------------------------
 --- In Combat - Rotations --- 
 -----------------------------
-            if inCombat and not isMounted and getBuffRemain("player", 192002 ) < 10 then
+            if inCombat and not IsMounted() and getBuffRemain("player", 192002 ) < 10 then
                 if isChecked("Debug Info") then Print("inCombat") end
 
                 if debuff.dampening ~= nil then
@@ -965,21 +1053,25 @@ local function runRotation()
 
                 if isChecked("Eye of Leotheras") and UnitDebuff("player","Eye Of Leotheras") ~= nil then
                     ClearTarget()
-                    if IsPetAttackActive() then
-                        PetStopAttack()
-                        PetPassiveMode()
-                    end
                     Print("Warning : Eye of Leotheras detected")
                     return
                 end
 
                 if isChecked("Auto Target") 
-                    and not UnitExists("target") 
+                    and not GetUnitExists("target")
                     or (not UnitIsEnemy("target", "player") and not UnitIsDeadOrGhost("target")) 
                 then
                     if #enemies.yards8 > 0 and UnitAffectingCombat(enemies.yards8[1]) then
                         TargetUnit(enemies.yards8[1])
                     end
+                end
+
+            ---------------------------
+            --- Queue Casting
+            ---------------------------
+                if isChecked("Queue Casting") and not UnitChannelInfo("player") then
+                    -- Catch for spells not registering on Combat log
+                    if castQueue() then return end
                 end
             ---------------------------
             --- SoulReaper          ---
@@ -1011,17 +1103,18 @@ local function runRotation()
                 --- Dark Arbiter Exist  ---
                 ---------------------------
                     if talent.darkArbiter then
-                        if objectExists(100876) then
+                        if GetObjExists(100876) then
                             if actionList_DarkArbiter() then return end
                         else
                             if actionList_PreDarkArbiter() then return end
-                        end
-                    end
+                        end                
                 ---------------------------
                 --- Soul Reaper         ---
                 ---------------------------
-                    if talent.soulReaper then
+                    elseif talent.soulReaper then
                         if actionList_SoulReaper() then return end
+                    else
+                        if actionList_Generic() then return end
                     end
                 ---------------------------
                 --- Queue               ---
